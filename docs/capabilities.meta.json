@@ -21,12 +21,12 @@
     {
       "module": "stapel-billing",
       "optional": true,
-      "reason": "the billing_credit strategy pays wallet credits through billing.credit (upstream ask B-RF1) and reverses through billing.debit"
+      "reason": "the billing_credit strategy pays wallet credits through billing.credit (stapel-billing >= 0.25.0) and reverses through billing.debit without recording debt"
     },
     {
       "module": "stapel-promotions",
       "optional": true,
-      "reason": "the promo_code strategy issues a single-use code of an existing promotion, assigned to the beneficiary, through promotions.codes.issue (stapel-promotions >= 0.1.0)"
+      "reason": "the promo_code strategy issues a single-use code of an existing promotion, assigned to the beneficiary, through promotions.codes.issue with an idempotency key and revokes it through promotions.codes.revoke (stapel-promotions 0.1.0)"
     },
     {
       "module": "stapel-notifications",
@@ -38,7 +38,7 @@
     {
       "name": "REWARD_STRATEGIES",
       "kind": "merge_registry",
-      "summary": "How a reward is paid. {name: 'dotted.Strategy' | None} merged over noop, billing_credit and promo_code; a rule may also name a dotted path. A strategy cleans its params, states the value counted against budgets, grants with an idempotency key and reverses; StrategyError means 'not now' and the beat retries."
+      "summary": "How a reward is paid. {name: 'dotted.Strategy' | None} merged over noop, billing_credit and promo_code; a rule may also name a dotted path. A strategy cleans its params, states the value counted against budgets, grants with an idempotency key and reverses; StrategyError means 'not now' and the beat retries; StrategyRefused rejects the reward with the provider's reason; reverse() may return a Reversal (reversed_partial / already_spent)."
     },
     {
       "name": "ATTRIBUTION_GUARDS",

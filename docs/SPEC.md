@@ -38,7 +38,7 @@ CONFIG.MD, `errors.py`, `@access`, `mutate_and_emit`, `AnchorPagination`,
 - **Attribution** — `referee_id` **unique** (one per referee, enforced by a
   constraint, not a read), `code` FK PROTECT, `referrer_id` snapshot,
   `code_kind` snapshot, `status` (`active` | `refused`), `refusal_reason`,
-  `source` (`claim` | `merge`), `captured_at` (client), `attributed_at`,
+  `source` (`claim` | `signup` | `merge`), `captured_at` (client), `attributed_at`,
   `qualifying_until`.
 - **RewardRule** — `name`, `active`, `trigger` (`signup` | `first_order` |
   `nth_order`), `order_ordinal` (N; `first_order` is N=1), `min_order_total`
@@ -53,9 +53,12 @@ CONFIG.MD, `errors.py`, `@access`, `mutate_and_emit`, `AnchorPagination`,
   `beneficiary_id`, `referrer_id` snapshot, `status`, `strategy`, `params`
   snapshot, `value` Decimal(18,2) + `unit`, `grant_ref`, `reason`,
   `hold_until`, `granted_at` / `rejected_at` / `reversed_at`,
-  `reverse_requested_at`, `attempts`, `last_error`.
+  `reverse_requested_at`, `reversal_outcome` (`reversed` |
+  `reversed_partial` | `already_spent`), `reversed_value`, `attempts`,
+  `last_error`.
   **Unique `(rule, attribution, trigger_id, role)`** — the idempotency key.
-- **SignupMarker** — `user_id` unique, `signed_up_at`: the
+- **SignupMarker** — `user_id` unique, `signed_up_at`, `auth_type` (the
+  `identity` a paying brick may create the user from): the
   `user.signed_up` fact seen (so a claim made after the fact still pays the
   signup rule, and the account age is the auth clock, not a shadow row's).
 - **QualifyingOrder** — `order_id` unique, `attribution` FK, `total`,
@@ -68,8 +71,14 @@ CONFIG.MD, `errors.py`, `@access`, `mutate_and_emit`, `AnchorPagination`,
 ## 3. Attribution rules
 
 1. The client stores the code on the first visit (first touch: it never
-   overwrites a stored code) with `captured_at`, and calls `POST claim/`
-   right after sign-up (or as a guest — a guest row is an account).
+   overwrites a stored code) with `captured_at`, and sends both in auth's
+   `signup_context` as `referral_code` / `referral_captured_at` (stapel-auth
+   >= 0.51.0 copies it into `user.signed_up`; source `signup`, judged at the
+   fact's `registered_at`, an auth clock more than 5 minutes ahead reads as
+   now, refusals logged at INFO). On an older auth, or as a guest (a guest
+   row is an account), it calls `POST claim/` right after sign-up. Both
+   doors share one code path and the `referee_id` constraint: together they
+   make one attribution (race-tested).
 2. Unknown or inactive code → `400 code_unknown`. Own code →
    `400 self_referral` (does **not** occupy the referee's slot).
 3. A campaign code outside its window → `409 code_expired`; at
@@ -132,12 +141,12 @@ CONFIG.MD, `errors.py`, `@access`, `mutate_and_emit`, `AnchorPagination`,
 | Name | Params | Calls | Value / unit |
 |---|---|---|---|
 | `noop` (default) | `{value?}` | nothing — records only | value / `none` |
-| `billing_credit` | `{credits: int ≥ 1, expires_in_days?, description?}` | `BILLING_CREDIT_FUNCTION` (`billing.credit`, ask B-RF1), reversal via `BILLING_DEBIT_FUNCTION` (`billing.debit`, exists, `allow_partial`) | credits / `credits` |
-| `promo_code` | `{promotion_key: str ≤58, value?}` | `PROMO_ISSUE_FUNCTION` = `promotions.codes.issue {promotion_key, assigned_user_id, usage_limit: 1}` → `{promotion_key, codes: [str]}` — **requires stapel-promotions ≥ 0.1.0**; unknown key fails the call (reward stays pending). Reversal: `PROMO_REVOKE_FUNCTION` empty by default (no revoke Function exists) → recorded, code stays valid | value / `code` |
+| `billing_credit` | `{credits: int ≥ 1, expires_in_days?, description?}` | `BILLING_CREDIT_FUNCTION` (`billing.credit`, stapel-billing ≥ 0.25.0, key `referrals:reward:<id>`, `identity` from the signup marker; `user_unknown`/`user_inactive` → `rejected`, `idempotency_conflict` → pending + ERROR). Reversal via `BILLING_DEBIT_FUNCTION` (`billing.debit`, key `…:reverse`, no `allow_partial`): spent credits are not clawed back as debt — the reversal takes what the wallet holds (`reversed_partial`, `already_spent` at zero) | credits / `credits` |
+| `promo_code` | `{promotion_key: str ≤58, value?}` | `PROMO_ISSUE_FUNCTION` = `promotions.codes.issue {promotion_key, assigned_user_id, usage_limit: 1, idempotency_key}` → `{promotion_key, codes: [str]}` (a lost answer replays the same code); unknown key fails the call (reward stays pending). Reversal: `PROMO_REVOKE_FUNCTION` = `promotions.codes.revoke {code, reason}`; a redeemed code is revoked against further use and the reversal ends `already_spent` | value / `code` |
 | dotted path | strategy-defined | strategy-defined | strategy-defined |
 
-Payload contracts of the Functions this module calls but does not own are
-proposals in `schemas/asks/` until their owners ship them.
+This module ships no copy of the payload contracts it calls; their owners'
+schemas are the source, and the seam run (§11) installs the real owners.
 
 ## 6. API (`/referrals/api/v1/`)
 
@@ -183,12 +192,15 @@ reward ledger (rule, status, value, unit, grant_ref) is retained.
 
 ## 10. Upstream asks
 
+Shipped and adopted: A-RF1 (auth `signup_context`, 0.51.0), B-RF1
+(`billing.credit`, 0.25.0), P-RF1 (issue key + `promotions.codes.revoke`,
+promotions 0.1.0), N-RF1 (`referrals.reward_granted`, notifications 0.30.1).
+Still open:
+
 | Id | Repo | Ask |
 |---|---|---|
-| A-RF1 | stapel-auth | carry an opaque `referral_code` (+ `captured_at`) through sign-up into `user.signed_up` (or a sibling fact) so attribution needs no second client call; until then the claim endpoint is the seam |
-| B-RF1 | stapel-billing | comm Function `billing.credit {user_id, credits, idempotency_key, source, type, description?, metadata?, expires_at?}` → `{ok, transaction_id, balance}` over `services.credit()` (proposal: `schemas/asks/billing.credit.json`) |
-| P-RF1 | stapel-promotions | `promotions.codes.issue` gains an `idempotency_key` (a retry after a lost answer mints a second code today), and a `promotions.codes.revoke {code, idempotency_key}` → `{revoked, redeemed}` (proposal: `schemas/asks/promotions.codes.revoke.json`) |
-| N-RF1 | stapel-notifications | built-in type `referrals.reward_granted` |
+| B-RF2 | stapel-billing | a Function that reverses one credit by its transaction (`claw_back_grant` without the `outstanding` debt, e.g. `billing.credit.reverse {transaction_id, idempotency_key, forgive_spent: true}` → `{reclaimed, forgiven}`): `billing.debit` walks every lot, so a reversal of a spent referral credit today takes from credits the user bought |
+| P-RF2 | stapel-promotions | `promotions.codes.issue` answers the minted `code_ids` too, so a reversal can revoke by id instead of code text |
 | T-RF1 | stapel-tools | `STAPEL_LIBS["referrals"]`, `_gdpr_owners.py` += `referrals: ["account"]` |
 
 ## 11. Gates
@@ -198,4 +210,8 @@ pytest on 3.12 and 3.14 (+3.13 when present) with `emit_outside_atomic_gate`;
 billing / orders / promotions providers registered; migration from zero;
 concurrency tests for the code counter, the attribution constraint and the
 rule caps (lock-before-count spy + interleaving + inversion); GDPR export and
-erase; architecture test (no sibling import).
+erase; architecture test (no sibling import). Seam run: the module in one
+host with the real stapel-auth (>= 0.51.0), stapel-billing (>= 0.25.0),
+stapel-promotions (0.1.0 with the issue key) and released stapel-orders —
+sign-up with a context, first order, grant (wallet balance / issued code),
+cancel inside the hold window after the grant, reversal (debit / revoke).

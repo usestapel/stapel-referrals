@@ -6,8 +6,8 @@
   (``source_of_truth`` shape).
 
 The Functions the reward strategies CALL are owned by billing and
-promotions; their payloads are in ``strategies.py`` and the proposals for
-the ones not shipped yet are in ``schemas/asks/``.
+promotions (their schemas live there); the payloads this module sends are
+in ``strategies.py``.
 """
 from stapel_core.comm import function
 

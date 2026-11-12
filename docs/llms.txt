@@ -34,7 +34,7 @@ This is the answer to "does Stapel already have something for X?". `instead of` 
 - ATTRIBUTION_GUARDS [strategy]
   Opt-in claim guards: same_device, duplicate_contact or dotted paths (ClaimContext) -> reason | None. A reason records a refused attribution that keeps the account's slot; an unmeasurable guard returns None.
 - REWARD_STRATEGIES [merge_registry]
-  How a reward is paid. {name: 'dotted.Strategy' | None} merged over noop, billing_credit and promo_code; a rule may also name a dotted path. A strategy cleans its params, states the value counted against budgets, grants with an idempotency key and reverses; StrategyError means 'not now' and the beat retries.
+  How a reward is paid. {name: 'dotted.Strategy' | None} merged over noop, billing_credit and promo_code; a rule may also name a dotted path. A strategy cleans its params, states the value counted against budgets, grants with an idempotency key and reverses; StrategyError means 'not now' and the beat retries; StrategyRefused rejects the reward with the provider's reason; reverse() may return a Reversal (reversed_partial / already_spent).
 - SHARE_URL_TEMPLATE [setting]
   The share link, a template with {code}; empty answers link null rather than a guessed URL (check E003).
 - STAPEL_REFERRALS_ME_PRESENTER / _CLAIM_PRESENTER / _REFERRAL_PRESENTER / _REWARD_PRESENTER / _STAFF_PRESENTER [presenter]
@@ -48,11 +48,11 @@ This is the answer to "does Stapel already have something for X?". `instead of` 
 
 ## Fits with — fleet dependencies
 - stapel-auth (optional) — user.signed_up fires the signup rules and dates the account; user.merged moves a guest's codes and attribution to the account; a guest row may claim a code
-- stapel-billing (optional) — the billing_credit strategy pays wallet credits through billing.credit (upstream ask B-RF1) and reverses through billing.debit
+- stapel-billing (optional) — the billing_credit strategy pays wallet credits through billing.credit (stapel-billing >= 0.25.0) and reverses through billing.debit without recording debt
 - stapel-core (required) — comm bus (referrals.* emits, Functions, user.signed_up / user.merged / orders.* consumers), AnchorPagination, GDPR owner protocol, AppSettings
 - stapel-notifications (optional) — delivers referrals.reward_granted to the beneficiary
 - stapel-orders (optional) — orders.order.placed fires first-order and Nth-order rules; orders.order.status_changed to cancelled rejects or reverses their rewards
-- stapel-promotions (optional) — the promo_code strategy issues a single-use code of an existing promotion, assigned to the beneficiary, through promotions.codes.issue (stapel-promotions >= 0.1.0)
+- stapel-promotions (optional) — the promo_code strategy issues a single-use code of an existing promotion, assigned to the beneficiary, through promotions.codes.issue with an idempotency key and revokes it through promotions.codes.revoke (stapel-promotions 0.1.0)
 
 ## HTTP operations (16) — call by operationId, never by a typed path
 Paths are relative to `/referrals/api/v1/`.

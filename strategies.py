@@ -6,19 +6,20 @@ the name in settings. Built-ins (``REWARD_STRATEGIES`` merges over them,
 
 - ``noop`` (default) — records the reward, pays nothing;
 - ``billing_credit`` — wallet credits through ``BILLING_CREDIT_FUNCTION``
-  (``billing.credit``; upstream ask B-RF1), reversed through
-  ``BILLING_DEBIT_FUNCTION`` (``billing.debit``, ``allow_partial``);
+  (``billing.credit``, stapel-billing >= 0.25.0), reversed through
+  ``BILLING_DEBIT_FUNCTION`` (``billing.debit``, never ``allow_partial``);
 - ``promo_code`` — a single-use code of an existing promotion, assigned to
-  the beneficiary, through ``PROMO_ISSUE_FUNCTION``
-  (``promotions.codes.issue``, stapel-promotions >= 0.1.0). Promotions has
-  no revoke Function yet: with ``PROMO_REVOKE_FUNCTION`` empty (default) a
-  reversal is recorded in the ledger and the issued code stays redeemable
-  (upstream ask P-RF1).
+  the beneficiary, through ``PROMO_ISSUE_FUNCTION`` (``promotions.codes.issue``)
+  and revoked through ``PROMO_REVOKE_FUNCTION`` (``promotions.codes.revoke``),
+  stapel-promotions 0.1.0 with the issue key.
 
-Billing calls carry the idempotency key ``referrals:reward:<id>`` (plus
-``:reverse`` for a reversal), so the beat may retry freely.
-``promotions.codes.issue`` takes no idempotency key: a retry after a lost
-answer can mint a second code (ask P-RF1).
+Outbound keys are namespaced ``referrals:reward:<id>`` (``:reverse`` for a
+reversal): billing's key space is per wallet and shared with debits and
+holds, so a bare id would collide. Answers: :class:`StrategyRefused` is a
+domain "no" (the reward is rejected with its reason), :class:`StrategyError`
+is "not now" (pending, retried), :class:`StrategyConflict` is a key
+conflict (pending, ERROR). ``reverse()`` returns a :class:`Reversal` when
+less than everything came back.
 """
 from __future__ import annotations
 

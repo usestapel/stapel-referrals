@@ -20,8 +20,17 @@ Pre-1.0 semver: **minor = breaking**, patch = compatible.
   granted → reversed), idempotent on `(rule, attribution, trigger, role)`,
   caps counted under the rule-row lock.
 - Reward strategies `noop`, `billing_credit` (`billing.credit` /
-  `billing.debit`), `promo_code` (`promotions.codes.issue`, stapel-promotions >= 0.1.0),
-  dotted path for custom ones.
+  `billing.debit`, stapel-billing >= 0.25.0: keys `referrals:reward:<id>` and
+  `:reverse`, `identity` from the sign-up fact, `user_unknown` /
+  `user_inactive` reject, `idempotency_conflict` stays pending with an ERROR,
+  a reversal of spent credits ends `reversed_partial` / `already_spent` and
+  never records debt), `promo_code` (`promotions.codes.issue` with an
+  idempotency key, `promotions.codes.revoke {code, reason}`; a redeemed code
+  ends `already_spent`), dotted path for custom ones.
+- Sign-up carriage: `user.signed_up.signup_context` (stapel-auth >= 0.51.0)
+  with `referral_code` / `referral_captured_at` attributes the account
+  (source `signup`); `POST claim/` stays for older auth and guests, and both
+  together make one attribution.
 - API: `me/`, `me/code/`, `me/referrals/`, `me/rewards/`, `claim/`,
   `codes/{code}/`, staff rules, campaign codes, rewards ledger and
   transitions, stats.
