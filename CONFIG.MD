@@ -31,10 +31,10 @@ config axes.
 | REVERSAL_WINDOW_DAYS | env | a cancel this long after the grant still reverses the reward. | no | 30 |
 | REFEREE_DISPLAY | env | axis: how a referrer sees referees: hidden, masked (E004). | no | masked |
 | NOTIFY | env | best-effort notification `referrals.reward_granted` to the beneficiary. | no | true |
-| BILLING_CREDIT_FUNCTION | env | comm Function the billing_credit strategy calls to pay. | no | billing.credit |
+| BILLING_CREDIT_FUNCTION | env | comm Function the billing_credit strategy calls to pay (stapel-billing >= 0.25.0). | no | billing.credit |
 | BILLING_DEBIT_FUNCTION | env | comm Function the billing_credit strategy calls to reverse. | no | billing.debit |
 | PROMO_ISSUE_FUNCTION | env | comm Function the promo_code strategy calls to issue a code (stapel-promotions >= 0.1.0). | no | promotions.codes.issue |
-| PROMO_REVOKE_FUNCTION | env | comm Function the promo_code strategy calls to revoke a code; empty = the reversal is recorded and the code stays redeemable (promotions has no revoke Function yet). | no | "" |
+| PROMO_REVOKE_FUNCTION | env | comm Function the promo_code strategy calls to revoke a code (stapel-promotions 0.1.0 with `promotions.codes.revoke`); empty = a reversal waits with `last_error` (the code cannot be withdrawn). | no | promotions.codes.revoke |
 | FUNCTION_TIMEOUT_SECONDS | env | timeout of one strategy call. | no | 5.0 |
 | SIGNUP_MARKER_TTL_DAYS | env | signup markers older than this are purged by the beat. | no | 30 |
 | DEVICE_SIGHTING_TTL_DAYS | env | device sightings older than this are purged by the beat. | no | 30 |

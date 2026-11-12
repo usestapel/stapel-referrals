@@ -301,9 +301,17 @@ class BillingCreditStrategy(RewardStrategy):
 class PromoCodeStrategy(RewardStrategy):
     """A single-use promo code of an existing promotion: ``{promotion_key, value?}``.
 
-    Calls ``promotions.codes.issue {promotion_key, assigned_user_id,
-    usage_limit: 1}`` -> ``{promotion_key, codes: [str]}``; an unknown
-    promotion fails the call (the reward stays pending with ``last_error``).
+    Grant: ``promotions.codes.issue {promotion_key, assigned_user_id,
+    usage_limit: 1, idempotency_key}`` -> ``{promotion_key, codes: [str]}``
+    (stapel-promotions >= 0.1.0 with the issue key). The key is
+    ``referrals:reward:<id>``: a retry after a lost answer gets the same code
+    back and mints nothing. An unknown promotion or a key conflict fails the
+    call (the reward stays pending with ``last_error``).
+
+    Reversal: ``promotions.codes.revoke {code, reason}`` (idempotent by
+    state; it takes no key). A code already redeemed cannot be un-spent:
+    it is revoked against further use and the reversal ends
+    ``already_spent``.
     """
 
     name = "promo_code"
@@ -312,6 +320,8 @@ class PromoCodeStrategy(RewardStrategy):
 
     #: promotions.codes.issue: promotion_key maxLength.
     PROMOTION_KEY_MAX_LENGTH = 58
+    #: promotions.codes.revoke: reason maxLength.
+    REVOKE_REASON_MAX_LENGTH = 64
 
     def clean_params(self, params):
         params = super().clean_params(params)
@@ -330,6 +340,7 @@ class PromoCodeStrategy(RewardStrategy):
             "promotion_key": params["promotion_key"],
             "assigned_user_id": reward.beneficiary_id,
             "usage_limit": 1,
+            "idempotency_key": idempotency_key(reward),
         })
         codes = result.get("codes")
         if not isinstance(codes, list) or not codes or not isinstance(codes[0], str) or not codes[0]:
@@ -339,12 +350,20 @@ class PromoCodeStrategy(RewardStrategy):
     def reverse(self, reward):
         from .conf import referrals_settings
 
-        if not reward.grant_ref or not referrals_settings.PROMO_REVOKE_FUNCTION:
-            return  # no revoke seam: the ledger records the reversal, the code stays valid
-        call_function("PROMO_REVOKE_FUNCTION", {
+        if not reward.grant_ref:
+            return None  # nothing was issued
+        if not referrals_settings.PROMO_REVOKE_FUNCTION:
+            raise StrategyError("PROMO_REVOKE_FUNCTION is empty: the issued code cannot be revoked")
+        result = call_function("PROMO_REVOKE_FUNCTION", {
             "code": reward.grant_ref,
-            "idempotency_key": idempotency_key(reward, ":reverse"),
+            "reason": (f"referrals:{reward.reason}" if reward.reason else "referrals:reversed")
+            [: self.REVOKE_REASON_MAX_LENGTH],
         })
+        if result.get("revoked") is not True:
+            raise StrategyError("promotions did not confirm the revocation")
+        if result.get("redeemed") is True:
+            return Reversal(outcome="already_spent", value=Decimal("0.00"))
+        return None
 
 
 def strategy_paths() -> dict:

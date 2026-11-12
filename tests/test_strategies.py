@@ -228,18 +228,60 @@ class TestPayloads:
         assert sorted(c["promotion_key"] for c in issued) == ["friend-10", "welcome-5"]
         assert all(c["usage_limit"] == 1 for c in issued)
         assert {c["assigned_user_id"] for c in issued} == {str(referrer.pk), str(referee.pk)}
+        assert {c["idempotency_key"] for c in issued} == {
+            f"referrals:reward:{r.pk}" for r in Reward.objects.all()}
         assert set(Reward.objects.values_list("unit", flat=True)) == {"code"}
         assert all(r.grant_ref.startswith("GIFT") for r in Reward.objects.all())
 
-    def test_promo_reversal_without_a_revoke_seam(self, referrer, referee, providers):
-        from stapel_referrals.services.rewards import request_reversal
+    def test_lost_issue_answer_does_not_mint_a_second_code(self, referrer, referee, providers):
+        rule(strategy="promo_code", beneficiary="referee", referee_params={"promotion_key": "welcome-5"})
+        claim(referee, my_code(referrer))
+        providers.lose_answer.add("promotions.codes.issue")
+        signed_up(referee)
+        assert Reward.objects.get().status == "pending"
+        grant_due()
+        reward = Reward.objects.get()
+        assert reward.status == "granted" and list(providers.codes) == [reward.grant_ref]
 
+    def _granted_code(self, referrer, referee):
         rule(strategy="promo_code", beneficiary="referrer", referrer_params={"promotion_key": "friend-10"})
         claim(referee, my_code(referrer))
         signed_up(referee)
-        reward = request_reversal(Reward.objects.get().pk, "staff")
-        assert reward.status == "reversed"
-        assert providers.calls["promotions.codes.revoke"] == []  # nothing to call yet (ask P-RF1)
+        return Reward.objects.get()
+
+    def test_promo_reversal_revokes_the_code(self, referrer, referee, providers):
+        from stapel_referrals.services.rewards import request_reversal
+
+        reward = self._granted_code(referrer, referee)
+        reward = request_reversal(reward.pk, "order_cancelled")
+        (revoke,) = providers.calls["promotions.codes.revoke"]
+        assert revoke == {"code": reward.grant_ref, "reason": "referrals:order_cancelled"}
+        assert (reward.status, reward.reversal_outcome) == ("reversed", "reversed")
+        assert providers.codes[reward.grant_ref]["revoked"] is True
+
+    def test_promo_reversal_of_a_redeemed_code(self, referrer, referee, providers):
+        from stapel_referrals.services.rewards import request_reversal
+
+        reward = self._granted_code(referrer, referee)
+        providers.codes[reward.grant_ref]["redeemed"] = True
+        reward = request_reversal(reward.pk, "staff")
+        assert (reward.status, reward.reversal_outcome, reward.reversed_value) == (
+            "reversed", "already_spent", Decimal("0.00"))
+
+    def test_promo_reversal_of_an_already_revoked_code(self, referrer, referee, providers):
+        from stapel_referrals.services.rewards import request_reversal
+
+        reward = self._granted_code(referrer, referee)
+        providers.codes[reward.grant_ref]["revoked"] = True
+        reward = request_reversal(reward.pk, "staff")
+        assert (reward.status, reward.reversal_outcome) == ("reversed", "reversed")
+
+    def test_promo_reversal_without_a_revoke_function_waits(self, referrer, referee, providers, settings):
+        from stapel_referrals.services.rewards import request_reversal
+
+        settings.STAPEL_REFERRALS = {"PROMO_REVOKE_FUNCTION": ""}
+        reward = request_reversal(self._granted_code(referrer, referee).pk, "staff")
+        assert reward.status == "granted" and "PROMO_REVOKE_FUNCTION" in reward.last_error
 
     def test_unknown_promotion_keeps_pending(self, referrer, referee, providers):
         rule(strategy="promo_code", beneficiary="referee", referee_params={"promotion_key": "missing"})

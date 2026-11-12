@@ -56,9 +56,7 @@ DEFAULTS = {
     "BILLING_CREDIT_FUNCTION": "billing.credit",
     "BILLING_DEBIT_FUNCTION": "billing.debit",
     "PROMO_ISSUE_FUNCTION": "promotions.codes.issue",
-    # Empty: promotions ships no revoke Function yet (ask P-RF1); a reversal
-    # is recorded and the issued code stays redeemable.
-    "PROMO_REVOKE_FUNCTION": "",
+    "PROMO_REVOKE_FUNCTION": "promotions.codes.revoke",
     # Seconds a strategy call may take.
     "FUNCTION_TIMEOUT_SECONDS": 5.0,
     # Housekeeping: signup markers and device sightings older than these go.
