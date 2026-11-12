@@ -74,9 +74,18 @@ ISO 8601 on the client clock (optional). Auth copies the object into
 guards, judged at the fact's `registered_at` (an auth clock more than 5
 minutes ahead reads as now; a client `captured_at` after it reads as the
 sign-up instant; older than `ATTRIBUTION_WINDOW_DAYS` is refused). A
-refusal is logged at INFO and never fails the fact. A client on an older
-auth, or a guest, calls `POST claim/` instead — doing both is safe: one
-attribution, a same-code claim answers `200`.
+refusal is logged at INFO and never fails the fact.
+
+| Host runs | Client does |
+|---|---|
+| stapel-auth >= 0.51.0 (carries `signup_context`) | puts `referral_code` + `referral_captured_at` into the sign-up request and **need not call `claim/`** |
+| an older stapel-auth | calls `POST claim/` right after sign-up |
+| a guest session (no sign-up yet) | calls `POST claim/` as the guest; `user.merged` / the promotion keep it |
+
+Doing both is safe: one attribution, a same-code claim answers `200`, a
+different code `409 already_attributed`. The client cannot see a refusal on
+the sign-up path (it is the fact's consumer that decides); `GET me/`
+`referred` tells it whether the attribution landed.
 
 ### Serializer seams and presenters (`views.py`, `presenters.py`)
 
