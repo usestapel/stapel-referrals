@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "user.signed_up (consumer view)",
-  "description": "stapel-auth owns this fact. The fields stapel-referrals reads; anything else the owner sends is accepted.",
+  "description": "stapel-auth owns this fact. The fields stapel-referrals reads; anything else the owner sends is accepted. signup_context (stapel-auth >= 0.51.0) is the client's opaque object; referrals reads referral_code and referral_captured_at from it.",
   "type": "object",
   "properties": {
     "user_id": {
@@ -9,6 +9,13 @@
     },
     "registered_at": {
       "type": "string"
+    },
+    "auth_type": {
+      "type": "string"
+    },
+    "signup_context": {
+      "type": "object",
+      "description": "Opaque to auth. Referrals reads referral_code (a code text) and referral_captured_at (ISO 8601, client clock); a value of another type is ignored, never a reason to drop the fact."
     }
   },
   "required": [

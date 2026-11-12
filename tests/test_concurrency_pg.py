@@ -153,3 +153,18 @@ class TestOneAttributionThreads:
         meet_before(monkeypatch, code_service, "_primary")
         results = run_both(lambda: my_code(owner), lambda: my_code(owner))
         assert results[0] == results[1] and ReferralCode.objects.count() == 1
+
+
+class TestSignupFactAndClaimThreads:
+    def test_fact_and_claim_at_once_make_one_attribution(self, monkeypatch):
+        from .test_signup_context import ctx, signed_up_with
+
+        rule()
+        x, referee = make_user("x"), make_user("r")
+        code = my_code(x)
+        meet_before(monkeypatch, guards, "first_objection")
+        results = run_both(lambda: signed_up_with(referee, ctx(code)), lambda: claim(referee, code))
+        assert not any(isinstance(r, Exception) for r in results), results
+        assert Attribution.objects.filter(referee_id=str(referee.pk)).count() == 1
+        assert ReferralCode.objects.get(code=code).attribution_count == 1
+        assert Reward.objects.count() == 2

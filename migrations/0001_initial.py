@@ -21,7 +21,7 @@ class Migration(migrations.Migration):
                 ('code_kind', models.CharField(choices=[('personal', 'Personal'), ('campaign', 'Campaign')], help_text='Snapshot of the code kind.', max_length=16)),
                 ('status', models.CharField(choices=[('active', 'Active'), ('refused', 'Refused by a guard')], default='active', help_text='refused = a guard objected; the slot stays taken.', max_length=16)),
                 ('refusal_reason', models.CharField(blank=True, default='', help_text="The guard's reason; never sent to the referee.", max_length=64)),
-                ('source', models.CharField(choices=[('claim', 'Claimed by the referee'), ('merge', 'Carried over by an account merge')], default='claim', help_text='How the attribution was made.', max_length=16)),
+                ('source', models.CharField(choices=[('claim', 'Claimed by the referee'), ('signup', 'Carried by the sign-up (signup_context)'), ('merge', 'Carried over by an account merge')], default='claim', help_text='How the attribution was made.', max_length=16)),
                 ('captured_at', models.DateTimeField(blank=True, help_text='When the client captured the code (client clock).', null=True)),
                 ('attributed_at', models.DateTimeField(help_text='When the claim was accepted.')),
                 ('qualifying_until', models.DateTimeField(help_text='Orders after this do not count.')),

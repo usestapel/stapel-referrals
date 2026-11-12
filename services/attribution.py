@@ -103,15 +103,79 @@ def _replay_or_conflict(existing: Attribution, code: ReferralCode) -> Attributio
 
 
 def claim(user, raw_code, *, captured_at=None, device_id: str = "", now=None) -> tuple[Attribution, bool]:
-    """Attribute *user* to the code. Returns ``(attribution, created)``."""
-    from ..conf import referrals_settings
-    from . import rewards
-
+    """Attribute *user* to the code (``POST claim/``). Returns ``(attribution, created)``."""
     refusal = requires_account_refusal(user)
     if refusal is not None:
         raise refusal
     now = now or timezone.now()
-    referee_id = str(user.pk)
+    return _attribute(
+        str(user.pk), raw_code, captured_at=captured_at, device_hash=guards.device_hash(device_id),
+        at=now, now=now, source=AttributionSource.CLAIM, user=user,
+    )
+
+
+#: How far a sign-up instant from auth's clock may run ahead of ours.
+SIGNUP_CLOCK_SKEW = dt.timedelta(minutes=5)
+
+#: The keys a client puts into auth's ``signup_context`` (the client contract).
+CONTEXT_CODE = "referral_code"
+CONTEXT_CAPTURED_AT = "referral_captured_at"
+
+
+def signup_reference(registered_at: dt.datetime | None, now: dt.datetime) -> dt.datetime:
+    """The instant a sign-up attribution is judged at: auth's ``registered_at``,
+    never later than ours plus :data:`SIGNUP_CLOCK_SKEW` (a clock that far
+    ahead reads as now); a missing one is now."""
+    if registered_at is None or registered_at > now + SIGNUP_CLOCK_SKEW:
+        return now
+    return min(registered_at, now)
+
+
+def attribute_from_signup(user_id: str, context: dict, *, registered_at=None, now=None) -> Attribution | None:
+    """Attribute a new account from ``user.signed_up``'s ``signup_context``.
+
+    The same guards as a claim, judged at the sign-up instant (a late
+    delivery does not age the account or close the window): unknown code,
+    self-referral, campaign window and cap, ``captured_at`` older than
+    ``ATTRIBUTION_WINDOW_DAYS``, guards. No device id travels with the fact.
+    A refusal is the client's affair, logged at INFO; the slot rules are the
+    claim's, so a claim racing this path ends with one attribution.
+    """
+    from django.utils.dateparse import parse_datetime
+
+    if not isinstance(context, dict):
+        return None
+    raw_code = context.get(CONTEXT_CODE)
+    if not isinstance(raw_code, str) or not raw_code.strip():
+        return None
+    now = now or timezone.now()
+    at = signup_reference(registered_at, now)
+    captured_at = None
+    raw_captured = context.get(CONTEXT_CAPTURED_AT)
+    if isinstance(raw_captured, str):
+        try:
+            captured_at = parse_datetime(raw_captured)
+        except ValueError:
+            captured_at = None
+        if captured_at is not None and timezone.is_naive(captured_at):
+            captured_at = captured_at.replace(tzinfo=dt.timezone.utc)
+    try:
+        attribution, _ = _attribute(
+            str(user_id), raw_code, captured_at=captured_at, device_hash="",
+            at=at, now=now, source=AttributionSource.SIGNUP, user=None,
+        )
+    except ReferralsError as exc:
+        logger.info("referrals: signup_context of %s not attributed: %s", user_id, exc.key)
+        return None
+    return attribution
+
+
+def _attribute(referee_id: str, raw_code, *, captured_at, device_hash: str, at, now, source: str,
+               user) -> tuple[Attribution, bool]:
+    """The one attribution path. *at* is the instant the checks are judged at."""
+    from ..conf import referrals_settings
+    from . import rewards
+
     code = code_service.lookup(raw_code)
     if code is None or not code.active:
         raise ReferralsError(400, ERR_400_CODE_UNKNOWN)
@@ -120,19 +184,19 @@ def claim(user, raw_code, *, captured_at=None, device_id: str = "", now=None) ->
     existing = Attribution.objects.filter(referee_id=referee_id).first()
     if existing is not None:
         return _replay_or_conflict(existing, code), False
-    if not code_service.in_window(code, now):
+    if not code_service.in_window(code, at):
         raise ReferralsError(409, ERR_409_CODE_EXPIRED)
     if captured_at is not None:
-        captured_at = min(captured_at, now)  # a client clock ahead of ours reads as now
+        captured_at = min(captured_at, at)  # a client clock ahead of ours reads as the check instant
         window = dt.timedelta(days=int(referrals_settings.ATTRIBUTION_WINDOW_DAYS))
-        if now - captured_at > window:
+        if at - captured_at > window:
             raise ReferralsError(409, ERR_409_ATTRIBUTION_WINDOW_CLOSED)
-    if account_too_old(referee_id, user, now):
+    if account_too_old(referee_id, user, at):
         raise ReferralsError(409, ERR_409_CLAIM_WINDOW_CLOSED)
 
     ctx = guards.ClaimContext(
         referee_id=referee_id, referrer_id=code.owner_id, code=code.code,
-        code_kind=code.kind, device_hash=guards.device_hash(device_id),
+        code_kind=code.kind, device_hash=device_hash,
     )
     objection = guards.first_objection(ctx)
     qualifying = dt.timedelta(days=int(referrals_settings.QUALIFYING_WINDOW_DAYS))
@@ -151,10 +215,10 @@ def claim(user, raw_code, *, captured_at=None, device_id: str = "", now=None) ->
                     code_kind=locked.kind,
                     status=AttributionStatus.REFUSED if objection else AttributionStatus.ACTIVE,
                     refusal_reason=objection or "",
-                    source=AttributionSource.CLAIM,
+                    source=source,
                     captured_at=captured_at,
-                    attributed_at=now,
-                    qualifying_until=now + qualifying,
+                    attributed_at=at,
+                    qualifying_until=at + qualifying,
                 )
         except IntegrityError:
             existing = Attribution.objects.get(referee_id=referee_id)
@@ -164,7 +228,7 @@ def claim(user, raw_code, *, captured_at=None, device_id: str = "", now=None) ->
             emit(events.EVENT_ATTRIBUTION_CREATED, events.attribution_payload(attribution),
                  key=str(attribution.pk))
     if objection is not None:
-        logger.info("referrals: claim by %s refused by guard %s", referee_id, objection)
+        logger.info("referrals: attribution of %s refused by guard %s", referee_id, objection)
         raise ReferralsError(409, ERR_409_CLAIM_REFUSED)
     if SignupMarker.objects.filter(user_id=referee_id).exists():
         rewards.on_signup(referee_id, now=now)

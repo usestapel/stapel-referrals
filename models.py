@@ -46,6 +46,7 @@ class AttributionStatus(models.TextChoices):
 
 class AttributionSource(models.TextChoices):
     CLAIM = "claim", "Claimed by the referee"
+    SIGNUP = "signup", "Carried by the sign-up (signup_context)"
     MERGE = "merge", "Carried over by an account merge"
 
 

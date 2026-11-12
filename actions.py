@@ -7,7 +7,9 @@ owner's schema). Without auth or orders installed, nothing arrives and
 nothing breaks.
 
 - ``user.signed_up`` (stapel-auth) — the one self-serve sign-up per
-  account: the signup marker is written and signup rules fire.
+  account: the signup marker is written, a ``referral_code`` in
+  ``signup_context`` (stapel-auth >= 0.51.0) attributes the account, and
+  signup rules fire.
 - ``user.merged`` (stapel-auth) — a guest folded into an account.
 - ``orders.order.placed`` / ``orders.order.status_changed`` (stapel-orders)
   — order rules fire; a cancel rejects or reverses.
@@ -45,21 +47,27 @@ def _instant(raw) -> dt.datetime | None:
 
 @on_action("user.signed_up", schema=_schema("user.signed_up"))
 def handle_user_signed_up(event):
-    """Write the signup marker, then fire signup rules for an attributed account."""
+    """Write the signup marker, attribute from ``signup_context``, fire signup rules."""
     from .models import SignupMarker
     from .services import rewards
+    from .services.attribution import attribute_from_signup
 
     payload = event.payload or {}
     user_id = str(payload.get("user_id") or "")
     if not user_id:
         return
-    signed_up_at = _instant(payload.get("registered_at")) or timezone.now()
+    now = timezone.now()
+    registered_at = _instant(payload.get("registered_at"))
+    auth_type = str(payload.get("auth_type") or "")[:32]
     try:
         with transaction.atomic():
             SignupMarker.objects.get_or_create(user_id=user_id, defaults={
-                "signed_up_at": signed_up_at, "auth_type": str(payload.get("auth_type") or "")[:32]})
+                "signed_up_at": registered_at or now, "auth_type": auth_type})
     except IntegrityError:
         pass
+    context = payload.get("signup_context")
+    if context:
+        attribute_from_signup(user_id, context, registered_at=registered_at, now=now)
     rewards.on_signup(user_id)
 
 
