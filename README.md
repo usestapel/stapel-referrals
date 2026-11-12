@@ -26,9 +26,9 @@ pip install stapel-referrals
 |---|---|
 | Version | `0.1.0` |
 | Python | `>=3.11` (3.11, 3.12, 3.13, 3.14) |
-| HTTP operations | 16 |
+| HTTP operations | 17 |
 | Config axes | 4 |
-| Usage surface | 4 |
+| Usage surface | 6 |
 | Extension points | 7 |
 | Error codes | 63 |
 | Documented flows | 3 |

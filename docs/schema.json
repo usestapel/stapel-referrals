@@ -769,6 +769,32 @@
           }
         }
       }
+    },
+    "/referrals/api/v1/staff/strategies/": {
+      "get": {
+        "operationId": "referrals_staff_strategies_list",
+        "description": "Every registered reward strategy with the JSON Schema of its params.\n\n**Permissions:** `IsStaffUser`",
+        "tags": [
+          "Referrals staff"
+        ],
+        "security": [
+          {
+            "JWTCookieAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RewardStrategyList"
+                }
+              }
+            },
+            "description": ""
+          }
+        }
+      }
     }
   },
   "components": {
@@ -1753,6 +1779,53 @@
         ],
         "type": "string",
         "description": "* `pending` - Pending\n* `granted` - Granted\n* `rejected` - Rejected\n* `reversed` - Reversed"
+      },
+      "RewardStrategy": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "The name a rule's strategy takes.",
+            "maxLength": 200
+          },
+          "unit": {
+            "type": "string",
+            "description": "Unit of the reward value.",
+            "maxLength": 16
+          },
+          "builtin": {
+            "type": "boolean",
+            "description": "Shipped with the module (else registered by the project)."
+          },
+          "description": {
+            "type": "string",
+            "description": "One line for the rule form."
+          },
+          "params_schema": {
+            "description": "JSON Schema (2020-12) of referrer_params / referee_params; rule writes validate against it."
+          }
+        },
+        "required": [
+          "builtin",
+          "description",
+          "name",
+          "params_schema",
+          "unit"
+        ]
+      },
+      "RewardStrategyList": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RewardStrategy"
+            }
+          }
+        },
+        "required": [
+          "items"
+        ]
       },
       "RewardTotal": {
         "type": "object",

@@ -180,3 +180,21 @@ class ReferralStatsDTO:
     rewards: RuleRewardCountsDTO
     granted_value: list[RewardTotalDTO]
     top_referrers: list[TopReferrerDTO]
+
+
+@dataclass
+class RewardStrategyDTO:
+    """A registered reward strategy as the staff rule form needs it."""
+
+    name: str
+    unit: str
+    builtin: bool
+    description: str
+    params_schema: dict
+
+
+@dataclass
+class RewardStrategyListDTO:
+    """Every registered reward strategy."""
+
+    items: list[RewardStrategyDTO]

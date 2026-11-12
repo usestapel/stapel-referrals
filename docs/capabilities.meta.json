@@ -94,7 +94,10 @@
     }
   },
   "surface_roots": [
-    {"select": "functions", "path": "strategies.py"}
+    {
+      "select": "functions",
+      "path": "strategies.py"
+    }
   ],
   "surface": {
     "call_function": {
@@ -112,6 +115,14 @@
     "get_strategy": {
       "kind": "factory",
       "intent": "A strategy instance for a registered name or a dotted path; LookupError when it does not resolve (rule writes answer error.400.reward_strategy_unknown)."
+    },
+    "params_problem": {
+      "kind": "predicate",
+      "intent": "Why a params dict breaks a strategy's params_schema (JSON Schema 2020-12), or None; rule writes call it before clean_params."
+    },
+    "registered_strategies": {
+      "kind": "predicate",
+      "intent": "Every registered strategy that resolves, as (name, instance) sorted by name; what GET staff/strategies/ lists."
     }
   }
 }

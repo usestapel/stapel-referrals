@@ -16,6 +16,7 @@ from .views import (
     StaffRewardListView,
     StaffRewardTransitionView,
     StatsView,
+    StrategyListView,
     VanityCodeView,
 )
 
@@ -35,6 +36,7 @@ urlpatterns = [
     path("staff/rewards/<int:reward_id>/transition/", StaffRewardTransitionView.as_view(),
          name="referrals-staff-reward-transition"),
     path("staff/stats/", StatsView.as_view(), name="referrals-staff-stats"),
+    path("staff/strategies/", StrategyListView.as_view(), name="referrals-staff-strategies"),
 ]
 
 

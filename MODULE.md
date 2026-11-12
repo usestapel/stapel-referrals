@@ -44,7 +44,10 @@
 
 ### Reward strategies (`strategies.py`)
 
-Subclass `RewardStrategy`: `clean_params(params) -> dict` (raise
+Subclass `RewardStrategy`; set `params_schema` (JSON Schema 2020-12 of the
+params — served by `GET staff/strategies/` to the rule form and checked on
+every rule write before `clean_params`) and a one-line `description`;
+`clean_params(params) -> dict` (raise
 `ValueError`), `value(params) -> Decimal` (counts against `budget_value`),
 `grant(reward) -> ref`, `reverse(reward) -> Reversal | None` (`None` = all
 of it came back; `Reversal("reversed_partial" | "already_spent", value)`
@@ -89,6 +92,7 @@ Views inherit `StapelAPIView`. Presentation swaps via `STAPEL_SWAP`
 | `ClaimView` (POST) | allowed; enforces `CLAIM_REQUIRES_ACCOUNT` | `ClaimRequestSerializer` | `ClaimResponseSerializer` |
 | `CodeLookupView` (GET) | public (AllowAny) | — | `CodeLookupResponseSerializer` |
 | `Rule*`, `CampaignCode*`, `StaffReward*`, `StatsView` | denied; `IsStaffUser` | rule / campaign / transition requests | staff responses |
+| `StrategyListView` (GET `staff/strategies/`) | denied; `IsStaffUser` | — | `RewardStrategyListSerializer` `{items: [{name, unit, builtin, description, params_schema}]}` |
 
 ### Events & functions (comm surface)
 

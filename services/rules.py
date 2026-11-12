@@ -14,7 +14,7 @@ from ..errors import (
     ERR_404_RULE_NOT_FOUND,
 )
 from ..models import Beneficiary, CodeKind, ReferralCode, RewardRule, Trigger
-from ..strategies import get_strategy
+from ..strategies import get_strategy, params_problem
 from . import ReferralsError
 
 WRITABLE = (
@@ -40,6 +40,9 @@ def clean_values(values: dict) -> dict:
     if values["beneficiary"] in (Beneficiary.REFEREE, Beneficiary.BOTH):
         roles.append("referee_params")
     for key in roles:
+        problem = params_problem(strategy, values.get(key) or {})
+        if problem:
+            raise ReferralsError(400, ERR_400_STRATEGY_PARAMS_INVALID, {"problem": f"{key}: {problem}"})
         try:
             values[key] = strategy.clean_params(values.get(key) or {})
         except ValueError as exc:

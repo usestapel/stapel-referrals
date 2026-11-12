@@ -121,13 +121,25 @@
       "intent": "The idempotency key a strategy sends with every outbound call for a reward (suffix ':reverse' for a reversal), so the beat may retry freely."
     },
     {
+      "name": "params_problem",
+      "kind": "predicate",
+      "path": "stapel_referrals.strategies.params_problem",
+      "intent": "Why a params dict breaks a strategy's params_schema (JSON Schema 2020-12), or None; rule writes call it before clean_params."
+    },
+    {
+      "name": "registered_strategies",
+      "kind": "predicate",
+      "path": "stapel_referrals.strategies.registered_strategies",
+      "intent": "Every registered strategy that resolves, as (name, instance) sorted by name; what GET staff/strategies/ lists."
+    },
+    {
       "name": "strategy_paths",
       "kind": "predicate",
       "path": "stapel_referrals.strategies.strategy_paths",
       "intent": "The effective strategy registry: built-ins merged with REWARD_STRATEGIES (None removes)."
     }
   ],
-  "operations_total": 16,
+  "operations_total": 17,
   "requires": [
     {
       "module": "stapel-core",

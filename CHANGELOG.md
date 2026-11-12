@@ -33,7 +33,8 @@ Pre-1.0 semver: **minor = breaking**, patch = compatible.
   together make one attribution.
 - API: `me/`, `me/code/`, `me/referrals/`, `me/rewards/`, `claim/`,
   `codes/{code}/`, staff rules, campaign codes, rewards ledger and
-  transitions, stats.
+  transitions, stats, `staff/strategies/` (every registered strategy with
+  the JSON Schema of its params; rule writes validate against it).
 - Facts `referrals.attribution.created`, `referrals.reward.granted|rejected|reversed`;
   consumers of `user.signed_up`, `user.merged`, `orders.order.placed`,
   `orders.order.status_changed`; Functions `referrals.attribution.get`,

@@ -36,6 +36,7 @@ from .serializers import (
     ReferralItemSerializer,
     ReferralPageSerializer,
     ReferralStatsResponseSerializer,
+    RewardStrategyListSerializer,
     RewardPageSerializer,
     RewardResponseSerializer,
     RewardRuleRequestSerializer,
@@ -366,3 +367,17 @@ class StatsView(_StaffView):
     @flow_step(STAFF, order=7, note="Programme statistics")
     def get(self, request):
         return self.serialized_response(get_staff_presenter()().present_stats(queries.stats()))
+
+
+@extend_schema(tags=STAFF_TAGS)
+class StrategyListView(_StaffView):
+    """Every registered reward strategy with the JSON Schema of its params."""
+
+    response_serializer_class = RewardStrategyListSerializer
+
+    @extend_schema(operation_id="referrals_staff_strategies_list", responses={200: RewardStrategyListSerializer})
+    @flow_step(STAFF, order=11, note="List the reward strategies a rule may name, with their params schema")
+    def get(self, request):
+        from .strategies import registered_strategies
+
+        return self.serialized_response(get_staff_presenter()().present_strategies(registered_strategies()))

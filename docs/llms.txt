@@ -2,7 +2,7 @@
 
 Referral codes, attribution and rewards. Every member gets one personal code (minted lazily, collision-proof; vanity codes by policy) and a share link; staff issue campaign codes with a window and an attribution cap. A visitor's client stores the code on the first visit and claims it right after sign-up: the account is attributed once (unique constraint, first touch wins), self-referral, old accounts, stale captures and closed or used-up campaign codes are refused, and opt-in guards (same device, duplicate contact, custom) can refuse a claim with a recorded reason. Reward rules fire on facts — sign-up (user.signed_up), the first qualifying order or the Nth order (orders.order.placed) — for the referrer, the referee or both, with caps per referrer per rolling period and budgets counted under a lock on the rule row. The reward ledger is idempotent per (rule, attribution, trigger, role), holds order rewards for a period, rejects them when the order is cancelled during the hold and reverses them after it. Rewards are paid by a strategy that calls the paying brick by comm Function (billing_credit, promo_code) or just records them (noop); the module never imports auth, orders, billing or promotions.
 
-Contract: axes 4 · surface 4 · extension points 7 · operations 16 · error codes 63 · flows 3.
+Contract: axes 4 · surface 6 · extension points 7 · operations 17 · error codes 63 · flows 3.
 Generated from docs/capabilities.json by `stapel-llms-txt` — do not edit; drift-gated by `make contract-check`.
 
 ## Configuration axes — what a product switches on
@@ -24,6 +24,10 @@ This is the answer to "does Stapel already have something for X?". `instead of` 
 ### predicate
 - idempotency_key — stapel_referrals.strategies.idempotency_key
   The idempotency key a strategy sends with every outbound call for a reward (suffix ':reverse' for a reversal), so the beat may retry freely.
+- params_problem — stapel_referrals.strategies.params_problem
+  Why a params dict breaks a strategy's params_schema (JSON Schema 2020-12), or None; rule writes call it before clean_params.
+- registered_strategies — stapel_referrals.strategies.registered_strategies
+  Every registered strategy that resolves, as (name, instance) sorted by name; what GET staff/strategies/ lists.
 - strategy_paths — stapel_referrals.strategies.strategy_paths
   The effective strategy registry: built-ins merged with REWARD_STRATEGIES (None removes).
 ### factory
@@ -54,7 +58,7 @@ This is the answer to "does Stapel already have something for X?". `instead of` 
 - stapel-orders (optional) — orders.order.placed fires first-order and Nth-order rules; orders.order.status_changed to cancelled rejects or reverses their rewards
 - stapel-promotions (optional) — the promo_code strategy issues a single-use code of an existing promotion, assigned to the beneficiary, through promotions.codes.issue with an idempotency key and revokes it through promotions.codes.revoke (stapel-promotions 0.1.0)
 
-## HTTP operations (16) — call by operationId, never by a typed path
+## HTTP operations (17) — call by operationId, never by a typed path
 Paths are relative to `/referrals/api/v1/`.
 ### Referrals
 - POST /claim/ — referrals_claim_create
@@ -74,6 +78,7 @@ Paths are relative to `/referrals/api/v1/`.
 - GET /staff/rules/{rule_id}/ — referrals_staff_rules_retrieve
 - PATCH /staff/rules/{rule_id}/ — referrals_staff_rules_update
 - GET /staff/stats/ — referrals_staff_stats_retrieve
+- GET /staff/strategies/ — referrals_staff_strategies_list
 
 ## Error codes (63) — the StapelError envelope
 Render `t(code, params)`; branch UX on the remediation. Localized text lives in docs/errors.<lang>.md, not here.

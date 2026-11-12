@@ -235,3 +235,17 @@ class ReferralStatsResponseSerializer(serializers.Serializer):
     rewards = RuleRewardCountsSerializer()
     granted_value = RewardTotalSerializer(many=True)
     top_referrers = TopReferrerSerializer(many=True)
+
+
+class RewardStrategySerializer(serializers.Serializer):
+    name = serializers.CharField(max_length=m.STRATEGY_MAX_LENGTH, help_text="The name a rule's strategy takes.")
+    unit = serializers.CharField(max_length=m.UNIT_MAX_LENGTH, help_text="Unit of the reward value.")
+    builtin = serializers.BooleanField(help_text="Shipped with the module (else registered by the project).")
+    description = serializers.CharField(allow_blank=True, help_text="One line for the rule form.")
+    params_schema = serializers.JSONField(
+        help_text="JSON Schema (2020-12) of referrer_params / referee_params; rule writes validate against it.",
+    )
+
+
+class RewardStrategyListSerializer(serializers.Serializer):
+    items = RewardStrategySerializer(many=True)

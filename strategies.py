@@ -76,6 +76,11 @@ class RewardStrategy:
     unit = "none"
     #: comm Functions this strategy calls, as settings keys (for checks/docs).
     function_settings: tuple[str, ...] = ()
+    #: JSON Schema (2020-12) of the params; ``GET staff/strategies/`` serves it
+    #: and every rule write validates against it before ``clean_params``.
+    params_schema: dict = {"type": "object"}
+    #: One line for the staff rule form.
+    description = ""
 
     def clean_params(self, params: dict) -> dict:
         """Validated params; raise ``ValueError(problem)`` on a bad dict."""
@@ -154,11 +159,24 @@ def _expires_at(params: dict) -> str | None:
     return (timezone.now() + dt.timedelta(days=int(days))).isoformat()
 
 
+_VALUE_SCHEMA = {
+    "type": ["string", "number"],
+    "pattern": r"^[0-9]{1,16}(\.[0-9]{1,2})?$",
+    "minimum": 0,
+    "description": "Value counted against the rule's budget_value (decimal, 2 places).",
+}
+
+
 class NoopStrategy(RewardStrategy):
     """Records the reward; the host pays by listening to ``referrals.reward.granted``."""
 
     name = "noop"
     unit = "none"
+    description = "Records the reward and pays nothing; the host listens to referrals.reward.granted."
+    params_schema = {
+        "type": "object",
+        "properties": {"value": _VALUE_SCHEMA},
+    }
 
     def clean_params(self, params):
         params = super().clean_params(params)
@@ -208,6 +226,20 @@ class BillingCreditStrategy(RewardStrategy):
     name = "billing_credit"
     unit = "credits"
     function_settings = ("BILLING_CREDIT_FUNCTION", "BILLING_DEBIT_FUNCTION")
+    description = "Wallet credits through billing.credit; a reversal debits what is left, never a debt."
+    params_schema = {
+        "type": "object",
+        "required": ["credits"],
+        "properties": {
+            "credits": {"type": "integer", "minimum": 1, "maximum": 10**9,
+                        "description": "Credits put on the beneficiary's wallet."},
+            "expires_in_days": {"type": "integer", "minimum": 1, "maximum": 10**9,
+                                "description": "The credit lot dies this many days after the grant."},
+            "description": {"type": "string", "maxLength": 200,
+                            "description": "Ledger line shown in the wallet."},
+        },
+        "additionalProperties": False,
+    }
 
     #: billing.credit / billing.debit answers this strategy maps.
     REFUSALS = frozenset({"user_unknown", "user_inactive"})
@@ -321,6 +353,17 @@ class PromoCodeStrategy(RewardStrategy):
 
     #: promotions.codes.issue: promotion_key maxLength.
     PROMOTION_KEY_MAX_LENGTH = 58
+    description = "A single-use code of an existing promotion, assigned to the beneficiary."
+    params_schema = {
+        "type": "object",
+        "required": ["promotion_key"],
+        "properties": {
+            "promotion_key": {"type": "string", "minLength": 1, "maxLength": PROMOTION_KEY_MAX_LENGTH,
+                              "description": "Key of an existing promotion in stapel-promotions."},
+            "value": _VALUE_SCHEMA,
+        },
+        "additionalProperties": False,
+    }
     #: promotions.codes.revoke: reason maxLength.
     REVOKE_REASON_MAX_LENGTH = 64
 
@@ -382,6 +425,29 @@ def strategy_paths() -> dict:
     return merged
 
 
+def params_problem(strategy, params) -> str | None:
+    """Why *params* break the strategy's ``params_schema``, or None."""
+    from jsonschema import Draft202012Validator
+
+    schema = getattr(strategy, "params_schema", None) or {"type": "object"}
+    error = next(iter(sorted(Draft202012Validator(schema).iter_errors(params), key=lambda e: list(e.path))), None)
+    if error is None:
+        return None
+    where = "/".join(str(p) for p in error.path)
+    return f"{where}: {error.message}" if where else error.message
+
+
+def registered_strategies() -> list[tuple[str, RewardStrategy]]:
+    """``(name, instance)`` for every registered strategy that resolves, by name."""
+    out = []
+    for name in sorted(strategy_paths()):
+        try:
+            out.append((name, get_strategy(name)))
+        except LookupError:
+            continue
+    return out
+
+
 def get_strategy(name: str) -> RewardStrategy:
     """Instance for a registered name or a dotted path; ``LookupError`` otherwise."""
     paths = strategy_paths()
@@ -409,5 +475,7 @@ __all__ = [
     "StrategyError",
     "StrategyRefused",
     "get_strategy",
+    "params_problem",
+    "registered_strategies",
     "strategy_paths",
 ]

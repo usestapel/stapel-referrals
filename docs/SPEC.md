@@ -163,6 +163,7 @@ schemas are the source, and the seam run (§11) installs the real owners.
 | `GET staff/rewards/` | staff | `?status=&rule=` → `RewardPage` |
 | `POST staff/rewards/{id}/transition/` | staff | `RewardTransitionRequest {to, reason?}` → `RewardResponse` |
 | `GET staff/stats/` | staff | → `ReferralStatsResponse` |
+| `GET staff/strategies/` | staff | → `RewardStrategyList {items: [{name, unit, builtin, description, params_schema}]}`: every registered strategy; rule writes validate params against `params_schema` (`400 reward_params_invalid {problem}`) |
 
 ## 7. Settings (`STAPEL_REFERRALS`)
 

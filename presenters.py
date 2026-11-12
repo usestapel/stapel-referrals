@@ -17,6 +17,8 @@ from .dto import (
     ReferralItemDTO,
     ReferralStatsDTO,
     RewardDTO,
+    RewardStrategyDTO,
+    RewardStrategyListDTO,
     RewardRuleDTO,
     RewardTotalDTO,
     RuleRewardCountsDTO,
@@ -129,6 +131,20 @@ class StaffPresenter:
             starts_at=code.starts_at, ends_at=code.ends_at, max_attributions=code.max_attributions,
             attribution_count=code.attribution_count, link=link, created_at=code.created_at,
         )
+
+    def present_strategies(self, strategies) -> RewardStrategyListDTO:
+        from .strategies import BUILTIN_STRATEGIES, strategy_paths
+
+        paths = strategy_paths()
+        return RewardStrategyListDTO(items=[
+            RewardStrategyDTO(
+                name=name, unit=getattr(strategy, "unit", "none") or "none",
+                builtin=paths.get(name) == BUILTIN_STRATEGIES.get(name),
+                description=str(getattr(strategy, "description", "") or ""),
+                params_schema=dict(getattr(strategy, "params_schema", None) or {"type": "object"}),
+            )
+            for name, strategy in strategies
+        ])
 
     def present_stats(self, data: dict) -> ReferralStatsDTO:
         return ReferralStatsDTO(

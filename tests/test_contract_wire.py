@@ -173,6 +173,10 @@ def r_stats(env):
     return [env.staff.get(V1 + "/staff/stats/")], [empty]
 
 
+def r_strategies(env):
+    return [env.staff.get(V1 + "/staff/strategies/")], []
+
+
 RECIPES = {
     ("GET", V1 + "/me/", 200): r_me,
     ("PATCH", V1 + "/me/code/", 200): r_me_code,
@@ -191,6 +195,7 @@ RECIPES = {
     ("GET", V1 + "/staff/rewards/", 200): r_staff_rewards,
     ("POST", V1 + "/staff/rewards/{reward_id}/transition/", 200): r_transition,
     ("GET", V1 + "/staff/stats/", 200): r_stats,
+    ("GET", V1 + "/staff/strategies/", 200): r_strategies,
 }
 
 

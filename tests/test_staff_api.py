@@ -10,7 +10,7 @@ from .helpers import V1, claim, my_code, rule, signed_up
 
 pytestmark = pytest.mark.django_db
 
-STAFF_GETS = ["staff/rules/", "staff/campaign-codes/", "staff/rewards/", "staff/stats/"]
+STAFF_GETS = ["staff/rules/", "staff/campaign-codes/", "staff/rewards/", "staff/stats/", "staff/strategies/"]
 
 
 @pytest.mark.parametrize("path", STAFF_GETS)
@@ -165,3 +165,46 @@ def test_staff_grant_with_provider_down_is_503(staff, referrer, referee, client_
     assert r.status_code == 503
     assert r.json()["localizable_error"] == "error.503.reward_provider_unavailable"
     assert Reward.objects.get().status == "pending"
+
+
+class TestStrategies:
+    def test_builtins_with_their_params_schema(self, staff, client_for):
+        r = client_for(staff).get(f"{V1}/staff/strategies/")
+        assert r.status_code == 200, r.content
+        items = {i["name"]: i for i in r.json()["items"]}
+        assert set(items) == {"noop", "billing_credit", "promo_code"}
+        assert all(i["builtin"] for i in items.values())
+        assert (items["billing_credit"]["unit"], items["promo_code"]["unit"]) == ("credits", "code")
+        assert items["billing_credit"]["params_schema"]["required"] == ["credits"]
+        assert items["promo_code"]["params_schema"]["properties"]["promotion_key"]["maxLength"] == 58
+
+    def test_project_registered_and_removed(self, staff, client_for, settings):
+        settings.STAPEL_REFERRALS = {"REWARD_STRATEGIES": {
+            "points": "stapel_referrals.tests.test_strategies.Custom", "promo_code": None}}
+        items = {i["name"]: i for i in client_for(staff).get(f"{V1}/staff/strategies/").json()["items"]}
+        assert set(items) == {"noop", "billing_credit", "points"}
+        assert items["points"]["builtin"] is False and items["points"]["unit"] == "points"
+        assert items["points"]["params_schema"] == {"type": "object"}
+
+    @pytest.mark.parametrize("params, where", [
+        ({"credits": 5, "colour": "red"}, "referrer_params"),
+        ({"credits": "5"}, "referrer_params: credits"),
+        ({}, "referrer_params"),
+    ])
+    def test_rule_writes_validate_against_the_schema(self, staff, client_for, params, where):
+        body = {"name": "x", "trigger": "signup", "beneficiary": "referrer", "strategy": "billing_credit",
+                "referrer_params": params}
+        r = client_for(staff).post(f"{V1}/staff/rules/", body, format="json")
+        assert r.status_code == 400
+        assert r.json()["localizable_error"] == "error.400.reward_params_invalid"
+        assert where in r.json()["params"]["problem"]
+
+    def test_update_validates_too(self, staff, client_for):
+        c = client_for(staff)
+        created = c.post(f"{V1}/staff/rules/", {"name": "x", "trigger": "signup", "beneficiary": "referee",
+                                                "strategy": "promo_code",
+                                                "referee_params": {"promotion_key": "w"}}, format="json")
+        assert created.status_code == 201, created.content
+        r = c.patch(f"{V1}/staff/rules/{created.json()['id']}/",
+                    {"referee_params": {"promotion_key": "x" * 59}}, format="json")
+        assert r.status_code == 400 and "promotion_key" in r.json()["params"]["problem"]

@@ -289,6 +289,19 @@
             "path": "/referrals/api/v1/staff/campaign-codes/<int:code_id>/"
           }
         ]
+      },
+      {
+        "kind": "http",
+        "order": 11,
+        "note": "List the reward strategies a rule may name, with their params schema",
+        "note_key": "flow.referrals.staff.step.11.note",
+        "ref": "stapel_referrals.views.StrategyListView.get",
+        "endpoints": [
+          {
+            "method": "GET",
+            "path": "/referrals/api/v1/staff/strategies/"
+          }
+        ]
       }
     ]
   }
