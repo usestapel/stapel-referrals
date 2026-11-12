@@ -49,6 +49,10 @@ class MyReferralsResponseSerializer(serializers.Serializer):
     referred = serializers.BooleanField(help_text="I was attributed to someone's code.")
     counts = ReferralCountsSerializer()
     rewards_total = RewardTotalSerializer(many=True, help_text="Granted to me, summed per unit.")
+    hold_days = serializers.IntegerField(
+        min_value=0,
+        help_text="Days an order reward stays pending before it is granted (HOLD_DAYS; a rule may override it).",
+    )
 
 
 class VanityCodeRequestSerializer(serializers.Serializer):

@@ -53,9 +53,12 @@ class MyReferralsPresenter:
     """The referrer's dashboard: code, link, counts, totals."""
 
     def present(self, *, code, link, vanity_allowed, referred, counts, totals) -> MyReferralsDTO:
+        from .conf import referrals_settings
+
         return MyReferralsDTO(
             code=code.code, link=link, vanity_allowed=vanity_allowed, referred=referred,
             counts=ReferralCountsDTO(**counts), rewards_total=_totals(totals),
+            hold_days=int(referrals_settings.HOLD_DAYS),
         )
 
 

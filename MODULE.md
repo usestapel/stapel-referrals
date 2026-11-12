@@ -86,7 +86,7 @@ Views inherit `StapelAPIView`. Presentation swaps via `STAPEL_SWAP`
 
 | View | Guest stance | Request | Response |
 |---|---|---|---|
-| `MeView` (GET) | allowed (authenticated incl. guest) | `?device_id` | `MyReferralsResponseSerializer` |
+| `MeView` (GET) | allowed (authenticated incl. guest) | `?device_id` | `MyReferralsResponseSerializer` (incl. `vanity_allowed`, `hold_days`) |
 | `VanityCodeView` (PATCH) | allowed statically; policy refuses guests 403 | `VanityCodeRequestSerializer` | `MyReferralsResponseSerializer` |
 | `MyReferralsView`, `MyRewardsView` (GET) | allowed, scoped to me | anchor params | `ReferralPage` / `RewardPage` |
 | `ClaimView` (POST) | allowed; enforces `CLAIM_REQUIRES_ACCOUNT` | `ClaimRequestSerializer` | `ClaimResponseSerializer` |

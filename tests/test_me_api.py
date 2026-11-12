@@ -13,6 +13,7 @@ def test_me_mints_and_counts(referrer, referee, client_for):
     body = client_for(referrer).get(f"{V1}/me/").json()
     assert body["counts"] == {"referrals": 0, "rewarded_referrals": 0, "pending_rewards": 0, "granted_rewards": 0}
     assert body["vanity_allowed"] is False and body["referred"] is False and body["rewards_total"] == []
+    assert body["hold_days"] == 14
     claim(referee, body["code"])
     signed_up(referee)
     body = client_for(referrer).get(f"{V1}/me/").json()
@@ -83,3 +84,9 @@ def test_my_rewards(referrer, referee, client_for, providers):
     theirs = client_for(referrer).get(f"{V1}/me/rewards/").json()["items"]
     assert [x["role"] for x in theirs] == ["referrer"]
     assert Reward.objects.count() == 2
+
+
+def test_me_reports_the_hold_and_the_vanity_policy(referrer, client_for, settings):
+    settings.STAPEL_REFERRALS = {"HOLD_DAYS": 3, "VANITY_CODES": "users"}
+    body = client_for(referrer).get(f"{V1}/me/").json()
+    assert (body["hold_days"], body["vanity_allowed"]) == (3, True)

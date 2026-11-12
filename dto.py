@@ -34,6 +34,7 @@ class MyReferralsDTO:
     referred: bool
     counts: ReferralCountsDTO
     rewards_total: list[RewardTotalDTO] = field(default_factory=list)
+    hold_days: int = 0
 
 
 @dataclass

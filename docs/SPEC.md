@@ -152,7 +152,7 @@ schemas are the source, and the seam run (§11) installs the real owners.
 
 | Method/path | Who | Request → Response |
 |---|---|---|
-| `GET me/` | account or guest | → `MyReferralsResponse {code, link, vanity_allowed, counts, rewards_total, referred}` (mints the code lazily) |
+| `GET me/` | account or guest | → `MyReferralsResponse {code, link, vanity_allowed, hold_days, counts, rewards_total, referred}` (mints the code lazily; `hold_days` = `HOLD_DAYS`) |
 | `PATCH me/code/` | account (policy) | `VanityCodeRequest {code}` → `MyReferralsResponse` |
 | `GET me/referrals/` | account or guest | anchor page `AttributionPage` of my referees, labels masked by `REFEREE_DISPLAY` |
 | `GET me/rewards/` | account or guest | anchor page `RewardPage` of rewards where I am the beneficiary |

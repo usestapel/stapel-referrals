@@ -1070,11 +1070,17 @@
               "$ref": "#/components/schemas/RewardTotal"
             },
             "description": "Granted to me, summed per unit."
+          },
+          "hold_days": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Days an order reward stays pending before it is granted (HOLD_DAYS; a rule may override it)."
           }
         },
         "required": [
           "code",
           "counts",
+          "hold_days",
           "link",
           "referred",
           "rewards_total",
