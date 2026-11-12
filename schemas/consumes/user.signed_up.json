@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "user.signed_up (consumer view)",
+  "description": "stapel-auth owns this fact. The fields stapel-referrals reads; anything else the owner sends is accepted.",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "string"
+    },
+    "registered_at": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "user_id"
+  ]
+}

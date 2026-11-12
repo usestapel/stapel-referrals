@@ -1,0 +1,117 @@
+{
+  "_comment": "Hand-curated layer of docs/capabilities.json. The emitter (stapel_referrals/_capabilities.py) merges this over the derived axes; an axis in conf.py DEFAULTS marked as an axis but missing here (or vice versa) is a loud emission error. surface_roots + surface are the usage layer: every public function of the selected modules carries an intent line here.",
+  "maturity": "alpha",
+  "provides": "Referral codes, attribution and rewards. Every member gets one personal code (minted lazily, collision-proof; vanity codes by policy) and a share link; staff issue campaign codes with a window and an attribution cap. A visitor's client stores the code on the first visit and claims it right after sign-up: the account is attributed once (unique constraint, first touch wins), self-referral, old accounts, stale captures and closed or used-up campaign codes are refused, and opt-in guards (same device, duplicate contact, custom) can refuse a claim with a recorded reason. Reward rules fire on facts — sign-up (user.signed_up), the first qualifying order or the Nth order (orders.order.placed) — for the referrer, the referee or both, with caps per referrer per rolling period and budgets counted under a lock on the rule row. The reward ledger is idempotent per (rule, attribution, trigger, role), holds order rewards for a period, rejects them when the order is cancelled during the hold and reverses them after it. Rewards are paid by a strategy that calls the paying brick by comm Function (billing_credit, promo_code) or just records them (noop); the module never imports auth, orders, billing or promotions.",
+  "requires": [
+    {
+      "module": "stapel-core",
+      "optional": false,
+      "reason": "comm bus (referrals.* emits, Functions, user.signed_up / user.merged / orders.* consumers), AnchorPagination, GDPR owner protocol, AppSettings"
+    },
+    {
+      "module": "stapel-auth",
+      "optional": true,
+      "reason": "user.signed_up fires the signup rules and dates the account; user.merged moves a guest's codes and attribution to the account; a guest row may claim a code"
+    },
+    {
+      "module": "stapel-orders",
+      "optional": true,
+      "reason": "orders.order.placed fires first-order and Nth-order rules; orders.order.status_changed to cancelled rejects or reverses their rewards"
+    },
+    {
+      "module": "stapel-billing",
+      "optional": true,
+      "reason": "the billing_credit strategy pays wallet credits through billing.credit (upstream ask B-RF1) and reverses through billing.debit"
+    },
+    {
+      "module": "stapel-promotions",
+      "optional": true,
+      "reason": "the promo_code strategy issues a single-use code of an existing promotion, assigned to the beneficiary, through promotions.codes.issue (stapel-promotions >= 0.1.0)"
+    },
+    {
+      "module": "stapel-notifications",
+      "optional": true,
+      "reason": "delivers referrals.reward_granted to the beneficiary"
+    }
+  ],
+  "extension_points": [
+    {
+      "name": "REWARD_STRATEGIES",
+      "kind": "merge_registry",
+      "summary": "How a reward is paid. {name: 'dotted.Strategy' | None} merged over noop, billing_credit and promo_code; a rule may also name a dotted path. A strategy cleans its params, states the value counted against budgets, grants with an idempotency key and reverses; StrategyError means 'not now' and the beat retries."
+    },
+    {
+      "name": "ATTRIBUTION_GUARDS",
+      "kind": "strategy",
+      "summary": "Opt-in claim guards: same_device, duplicate_contact or dotted paths (ClaimContext) -> reason | None. A reason records a refused attribution that keeps the account's slot; an unmeasurable guard returns None."
+    },
+    {
+      "name": "SHARE_URL_TEMPLATE",
+      "kind": "setting",
+      "summary": "The share link, a template with {code}; empty answers link null rather than a guessed URL (check E003)."
+    },
+    {
+      "name": "STAPEL_REFERRALS_ME_PRESENTER / _CLAIM_PRESENTER / _REFERRAL_PRESENTER / _REWARD_PRESENTER / _STAFF_PRESENTER",
+      "kind": "presenter",
+      "summary": "Swap keys (STAPEL_SWAP) for every response presenter, so a host changes what the API shows without forking a view."
+    },
+    {
+      "name": "referrals.reward.granted",
+      "kind": "comm_event",
+      "summary": "A reward was paid (ids, role, value, unit — never an issued code or a contact), for notifications and projections. Siblings: referrals.reward.rejected, referrals.reward.reversed, referrals.attribution.created."
+    },
+    {
+      "name": "user.signed_up",
+      "kind": "comm_event",
+      "summary": "Consumed: writes the signup marker (auth's clock for the account age) and fires the signup rules of an attributed account."
+    },
+    {
+      "name": "orders.order.placed",
+      "kind": "comm_event",
+      "summary": "Consumed: an order placed by an attributed referee inside the qualifying window fires the first-order and Nth-order rules it qualifies for (currency, minimum total)."
+    }
+  ],
+  "axes": {
+    "VANITY_CODES": {
+      "business_label": "Members choose their own code",
+      "summary": "off (default): every member keeps the code minted for them. staff: staff accounts may choose one. users: every signed-in member may choose one (guests never). A replaced code keeps working for links already shared. Values: off, staff, users.",
+      "behavior": "off: PATCH me/code/ answers error.403.vanity_code_not_allowed; staff/users: it replaces the primary code (shape and reserved words checked, at most VANITY_MAX_CHANGES)."
+    },
+    "CLAIM_REQUIRES_ACCOUNT": {
+      "business_label": "Guests can use an invitation",
+      "summary": "false (default): a guest session may claim a code; the claim follows the guest into its account. true: only signed-in members can claim. Values: true, false.",
+      "behavior": "true: POST claim/ answers error.403.claim_requires_account to a guest session; false: guests claim like anyone else."
+    },
+    "HOLD_DAYS": {
+      "business_label": "Days before an order reward is paid",
+      "summary": "How long a reward earned by an order waits before it is paid (default 14), so a cancelled or returned order earns nothing. Sign-up rewards are paid at once unless a rule says otherwise. Values: 0 to 365.",
+      "behavior": "Order rewards are created pending with hold_until = now + HOLD_DAYS (a rule's hold_days overrides); the beat grants them after; a cancel during the hold rejects them."
+    },
+    "REFEREE_DISPLAY": {
+      "business_label": "What inviters see of their friends",
+      "summary": "masked (default): the referrer's list shows a masked e-mail (a***@e***.com) per friend. hidden: no label at all, only dates and rewards. Values: hidden, masked.",
+      "behavior": "masked: me/referrals/ referee_label is the masked e-mail or username; hidden: it is null."
+    }
+  },
+  "surface_roots": [
+    {"select": "functions", "path": "strategies.py"}
+  ],
+  "surface": {
+    "call_function": {
+      "kind": "gate_function",
+      "intent": "Call the comm Function named by a settings key from a strategy; any provider failure (unreachable, raised, malformed) becomes StrategyError so the reward is retried, never refused."
+    },
+    "idempotency_key": {
+      "kind": "predicate",
+      "intent": "The idempotency key a strategy sends with every outbound call for a reward (suffix ':reverse' for a reversal), so the beat may retry freely."
+    },
+    "strategy_paths": {
+      "kind": "predicate",
+      "intent": "The effective strategy registry: built-ins merged with REWARD_STRATEGIES (None removes)."
+    },
+    "get_strategy": {
+      "kind": "factory",
+      "intent": "A strategy instance for a registered name or a dotted path; LookupError when it does not resolve (rule writes answer error.400.reward_strategy_unknown)."
+    }
+  }
+}

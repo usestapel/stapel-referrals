@@ -1,0 +1,295 @@
+[
+  {
+    "id": "referrals.claim",
+    "title": "Arrive through an invitation",
+    "title_key": "flow.referrals.claim.title",
+    "description": "A visitor lands on a share link; the client stores the code (first touch) and, right after sign-up, claims it. The account is attributed to the referrer once; reward rules fire on sign-up and on qualifying orders.",
+    "description_key": "flow.referrals.claim.description",
+    "actors": [
+      "Visitor, then the new account (the referee)"
+    ],
+    "steps": [
+      {
+        "kind": "human",
+        "order": 0,
+        "note": "The visitor opens a share link; the client keeps the code",
+        "note_key": "flow.referrals.claim.step.0.note",
+        "ref": ""
+      },
+      {
+        "kind": "http",
+        "order": 1,
+        "note": "The landing page checks the code and names the inviter",
+        "note_key": "flow.referrals.claim.step.1.note",
+        "ref": "stapel_referrals.views.CodeLookupView.get",
+        "endpoints": [
+          {
+            "method": "GET",
+            "path": "/referrals/api/v1/codes/<str:code>/"
+          }
+        ]
+      },
+      {
+        "kind": "http",
+        "order": 2,
+        "note": "Right after sign-up the client claims the stored code",
+        "note_key": "flow.referrals.claim.step.2.note",
+        "ref": "stapel_referrals.views.ClaimView.post",
+        "endpoints": [
+          {
+            "method": "POST",
+            "path": "/referrals/api/v1/claim/"
+          }
+        ]
+      },
+      {
+        "kind": "action",
+        "order": 3,
+        "note": "Sign-up fires the signup rules",
+        "note_key": "flow.referrals.claim.step.3.note",
+        "ref": "user.signed_up"
+      },
+      {
+        "kind": "action",
+        "order": 4,
+        "note": "A qualifying order fires the order rules",
+        "note_key": "flow.referrals.claim.step.4.note",
+        "ref": "orders.order.placed"
+      },
+      {
+        "kind": "action",
+        "order": 5,
+        "note": "The attribution is announced",
+        "note_key": "flow.referrals.claim.step.5.note",
+        "ref": "referrals.attribution.created"
+      }
+    ]
+  },
+  {
+    "id": "referrals.invite",
+    "title": "Invite a friend",
+    "title_key": "flow.referrals.invite.title",
+    "description": "A member opens their referral page, gets a personal code minted on first use and a share link, optionally picks a vanity code, and later follows the friends who joined and the rewards they earned.",
+    "description_key": "flow.referrals.invite.description",
+    "actors": [
+      "Member (the referrer)"
+    ],
+    "steps": [
+      {
+        "kind": "human",
+        "order": 0,
+        "note": "The member opens 'Invite friends'",
+        "note_key": "flow.referrals.invite.step.0.note",
+        "ref": ""
+      },
+      {
+        "kind": "http",
+        "order": 1,
+        "note": "See my code, link and counts",
+        "note_key": "flow.referrals.invite.step.1.note",
+        "ref": "stapel_referrals.views.MeView.get",
+        "endpoints": [
+          {
+            "method": "GET",
+            "path": "/referrals/api/v1/me/"
+          }
+        ]
+      },
+      {
+        "kind": "http",
+        "order": 2,
+        "note": "Pick a vanity code when the policy allows",
+        "note_key": "flow.referrals.invite.step.2.note",
+        "ref": "stapel_referrals.views.VanityCodeView.patch",
+        "endpoints": [
+          {
+            "method": "PATCH",
+            "path": "/referrals/api/v1/me/code/"
+          }
+        ]
+      },
+      {
+        "kind": "http",
+        "order": 3,
+        "note": "Follow the friends who joined",
+        "note_key": "flow.referrals.invite.step.3.note",
+        "ref": "stapel_referrals.views.MyReferralsView.get",
+        "endpoints": [
+          {
+            "method": "GET",
+            "path": "/referrals/api/v1/me/referrals/"
+          }
+        ]
+      },
+      {
+        "kind": "http",
+        "order": 4,
+        "note": "See the rewards I earned",
+        "note_key": "flow.referrals.invite.step.4.note",
+        "ref": "stapel_referrals.views.MyRewardsView.get",
+        "endpoints": [
+          {
+            "method": "GET",
+            "path": "/referrals/api/v1/me/rewards/"
+          }
+        ]
+      },
+      {
+        "kind": "action",
+        "order": 5,
+        "note": "A granted reward is announced for notifications",
+        "note_key": "flow.referrals.invite.step.5.note",
+        "ref": "referrals.reward.granted"
+      }
+    ]
+  },
+  {
+    "id": "referrals.staff",
+    "title": "Run the referral programme",
+    "title_key": "flow.referrals.staff.title",
+    "description": "Staff define reward rules and campaign codes, watch the ledger and the statistics, and grant, reject or reverse a reward by hand.",
+    "description_key": "flow.referrals.staff.description",
+    "actors": [
+      "Staff"
+    ],
+    "steps": [
+      {
+        "kind": "http",
+        "order": 1,
+        "note": "Review the reward rules",
+        "note_key": "flow.referrals.staff.step.1.note",
+        "ref": "stapel_referrals.views.RuleListView.get",
+        "endpoints": [
+          {
+            "method": "GET",
+            "path": "/referrals/api/v1/staff/rules/"
+          }
+        ]
+      },
+      {
+        "kind": "http",
+        "order": 2,
+        "note": "Create a rule: trigger, beneficiary, strategy, caps",
+        "note_key": "flow.referrals.staff.step.2.note",
+        "ref": "stapel_referrals.views.RuleListView.post",
+        "endpoints": [
+          {
+            "method": "POST",
+            "path": "/referrals/api/v1/staff/rules/"
+          }
+        ]
+      },
+      {
+        "kind": "http",
+        "order": 3,
+        "note": "Change or deactivate a rule",
+        "note_key": "flow.referrals.staff.step.3.note",
+        "ref": "stapel_referrals.views.RuleDetailView.patch",
+        "endpoints": [
+          {
+            "method": "PATCH",
+            "path": "/referrals/api/v1/staff/rules/<int:rule_id>/"
+          }
+        ]
+      },
+      {
+        "kind": "http",
+        "order": 4,
+        "note": "Issue a campaign code with a window and a cap",
+        "note_key": "flow.referrals.staff.step.4.note",
+        "ref": "stapel_referrals.views.CampaignCodeListView.post",
+        "endpoints": [
+          {
+            "method": "POST",
+            "path": "/referrals/api/v1/staff/campaign-codes/"
+          }
+        ]
+      },
+      {
+        "kind": "http",
+        "order": 5,
+        "note": "Watch the ledger",
+        "note_key": "flow.referrals.staff.step.5.note",
+        "ref": "stapel_referrals.views.StaffRewardListView.get",
+        "endpoints": [
+          {
+            "method": "GET",
+            "path": "/referrals/api/v1/staff/rewards/"
+          }
+        ]
+      },
+      {
+        "kind": "action",
+        "order": 6,
+        "note": "A reversal is announced",
+        "note_key": "flow.referrals.staff.step.6.note",
+        "ref": "referrals.reward.reversed"
+      },
+      {
+        "kind": "http",
+        "order": 6,
+        "note": "Grant, reject or reverse a reward by hand",
+        "note_key": "flow.referrals.staff.step.6.note",
+        "ref": "stapel_referrals.views.StaffRewardTransitionView.post",
+        "endpoints": [
+          {
+            "method": "POST",
+            "path": "/referrals/api/v1/staff/rewards/<int:reward_id>/transition/"
+          }
+        ]
+      },
+      {
+        "kind": "http",
+        "order": 7,
+        "note": "Programme statistics",
+        "note_key": "flow.referrals.staff.step.7.note",
+        "ref": "stapel_referrals.views.StatsView.get",
+        "endpoints": [
+          {
+            "method": "GET",
+            "path": "/referrals/api/v1/staff/stats/"
+          }
+        ]
+      },
+      {
+        "kind": "http",
+        "order": 8,
+        "note": "Open one rule with its ledger counts",
+        "note_key": "flow.referrals.staff.step.8.note",
+        "ref": "stapel_referrals.views.RuleDetailView.get",
+        "endpoints": [
+          {
+            "method": "GET",
+            "path": "/referrals/api/v1/staff/rules/<int:rule_id>/"
+          }
+        ]
+      },
+      {
+        "kind": "http",
+        "order": 9,
+        "note": "Review campaign codes and their use",
+        "note_key": "flow.referrals.staff.step.9.note",
+        "ref": "stapel_referrals.views.CampaignCodeListView.get",
+        "endpoints": [
+          {
+            "method": "GET",
+            "path": "/referrals/api/v1/staff/campaign-codes/"
+          }
+        ]
+      },
+      {
+        "kind": "http",
+        "order": 10,
+        "note": "Close, extend or re-cap a campaign code",
+        "note_key": "flow.referrals.staff.step.10.note",
+        "ref": "stapel_referrals.views.CampaignCodeDetailView.patch",
+        "endpoints": [
+          {
+            "method": "PATCH",
+            "path": "/referrals/api/v1/staff/campaign-codes/<int:code_id>/"
+          }
+        ]
+      }
+    ]
+  }
+]

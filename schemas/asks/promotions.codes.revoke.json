@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "promotions.codes.revoke (proposal, ask P-RF1)",
+  "description": "Proposed comm Function for stapel-promotions: revoke an issued, unredeemed code (for a reversed referral reward). Idempotent on idempotency_key. Returns {revoked: bool, redeemed: bool} (a redeemed code cannot be taken back; the caller records the reversal anyway). Set STAPEL_REFERRALS['PROMO_REVOKE_FUNCTION'] = 'promotions.codes.revoke' once it ships.",
+  "type": "object",
+  "properties": {
+    "code": {
+      "type": "string",
+      "maxLength": 64
+    },
+    "idempotency_key": {
+      "type": "string",
+      "minLength": 1
+    }
+  },
+  "required": [
+    "code",
+    "idempotency_key"
+  ],
+  "additionalProperties": false
+}

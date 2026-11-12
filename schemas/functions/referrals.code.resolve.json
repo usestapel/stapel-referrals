@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "referrals.code.resolve",
+  "description": "A referral code's owner and whether a claim would pass the code checks now (active, inside its window, under its cap). Payload {code} (case-insensitive). Returns {found: bool, claimable: bool, kind: 'personal'|'campaign'|null, owner_id: str|null}.",
+  "type": "object",
+  "properties": {
+    "code": {
+      "type": "string",
+      "maxLength": 32
+    }
+  },
+  "required": [
+    "code"
+  ],
+  "additionalProperties": false
+}

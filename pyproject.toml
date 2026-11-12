@@ -1,0 +1,89 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "stapel-referrals"
+version = "0.1.0"
+description = "Referral codes, attribution and rewards for the Stapel framework"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.11"
+keywords = ["django", "stapel", "referrals", "invite", "rewards", "attribution"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Framework :: Django",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Typing :: Typed",
+]
+dependencies = [
+    "stapel-core>=0.95.3,<1.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/usestapel/stapel-referrals"
+Repository = "https://github.com/usestapel/stapel-referrals"
+Documentation = "https://github.com/usestapel/stapel-referrals#readme"
+Changelog = "https://github.com/usestapel/stapel-referrals/blob/main/CHANGELOG.md"
+Issues = "https://github.com/usestapel/stapel-referrals/issues"
+
+[project.optional-dependencies]
+all = []
+# ONE declaration of what the TEST SUITE needs, as opposed to what the package
+# needs. CI installs exactly this (`pip install -e ".[test]"`), so a sibling a
+# test imports and this list does not name is a red release on a clean runner —
+# the class that killed three of them in one night on 2026-08-24. The gate over
+# this list is `stapel-sibling-lint` (SIB001-006), wired into CI below; the
+# skip-vs-fail half of the contract is `tests/siblings.py`.
+test = [
+    "pytest",
+    "pytest-django",
+    "pytest-cov",
+    # contract emission + llms.txt/README generation (tests/test_contract.py)
+    "stapel-tools>=0.79.1,<1",
+    # the wire gate validates bodies; core's VALIDATE_SCHEMAS needs it too
+    "jsonschema>=4",
+]
+
+[tool.setuptools]
+package-dir = {"stapel_referrals" = "."}
+packages = [
+    "stapel_referrals",
+    "stapel_referrals.migrations",
+    "stapel_referrals.services",
+    "stapel_referrals.management",
+    "stapel_referrals.management.commands",
+]
+
+[tool.setuptools.package-data]
+# The contract documents ship IN THE WHEEL: that is what makes
+# `stapel-catalog --from-installed` possible, i.e. what turns catalog
+# freshness from somebody's discipline into a property of the lockfile.
+# A module that keeps them repo-only publishes code an agent cannot read.
+stapel_referrals = ["py.typed", "docs/capabilities.json", "docs/flows.json", "docs/errors.json", "docs/llms.txt", "CONFIG.MD", "migrations/*.py", "schemas/**/*.json"]
+
+[tool.ruff]
+target-version = "py311"
+
+[tool.ruff.lint]
+# Single source for the git hooks and CI (they pass the same flags on the CLI).
+select = ["E", "F", "W"]
+ignore = ["E501"]
+
+[tool.pytest.ini_options]
+django_find_project = false
+addopts = "--tb=short -q --import-mode=importlib"
+
+[tool.coverage.run]
+omit = [
+    "*/tests/*",
+    "*/conftest.py",
+    "*/migrations/*",
+]

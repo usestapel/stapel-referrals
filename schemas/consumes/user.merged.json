@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "user.merged (consumer view)",
+  "description": "stapel-auth owns this fact. The fields stapel-referrals reads.",
+  "type": "object",
+  "properties": {
+    "from_user_id": {
+      "type": "string"
+    },
+    "into_user_id": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "from_user_id",
+    "into_user_id"
+  ]
+}

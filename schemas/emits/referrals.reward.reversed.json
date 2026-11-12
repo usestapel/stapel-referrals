@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "referrals.reward.reversed",
+  "description": "A granted reward was taken back (order cancelled within REVERSAL_WINDOW_DAYS, or staff) and the strategy confirmed the reversal. Key = reward id.",
+  "type": "object",
+  "properties": {
+    "reward_id": {
+      "type": "string"
+    },
+    "rule_id": {
+      "type": "string"
+    },
+    "attribution_id": {
+      "type": "string"
+    },
+    "role": {
+      "type": "string",
+      "enum": [
+        "referrer",
+        "referee"
+      ]
+    },
+    "beneficiary_id": {
+      "type": "string",
+      "maxLength": 64
+    },
+    "referrer_id": {
+      "type": "string",
+      "maxLength": 64
+    },
+    "trigger": {
+      "type": "string",
+      "enum": [
+        "signup",
+        "order"
+      ]
+    },
+    "strategy": {
+      "type": "string",
+      "maxLength": 200
+    },
+    "value": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]{2}$"
+    },
+    "unit": {
+      "type": "string",
+      "maxLength": 16
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "granted",
+        "rejected",
+        "reversed"
+      ]
+    },
+    "reason": {
+      "type": "string",
+      "maxLength": 64
+    }
+  },
+  "required": [
+    "reward_id",
+    "rule_id",
+    "attribution_id",
+    "role",
+    "beneficiary_id",
+    "referrer_id",
+    "trigger",
+    "strategy",
+    "value",
+    "unit",
+    "status"
+  ],
+  "additionalProperties": false
+}

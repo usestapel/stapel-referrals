@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "referrals.attribution.created",
+  "description": "An account was attributed to a referral code (first touch, once per account). Key = attribution id. Refused claims are not announced.",
+  "type": "object",
+  "properties": {
+    "attribution_id": {
+      "type": "string"
+    },
+    "referee_id": {
+      "type": "string",
+      "maxLength": 64
+    },
+    "referrer_id": {
+      "type": "string",
+      "maxLength": 64
+    },
+    "code_kind": {
+      "type": "string",
+      "enum": [
+        "personal",
+        "campaign"
+      ]
+    },
+    "attributed_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "attribution_id",
+    "referee_id",
+    "referrer_id",
+    "code_kind",
+    "attributed_at"
+  ],
+  "additionalProperties": false
+}

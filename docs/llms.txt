@@ -1,0 +1,147 @@
+# stapel-referrals 0.1.0
+
+Referral codes, attribution and rewards. Every member gets one personal code (minted lazily, collision-proof; vanity codes by policy) and a share link; staff issue campaign codes with a window and an attribution cap. A visitor's client stores the code on the first visit and claims it right after sign-up: the account is attributed once (unique constraint, first touch wins), self-referral, old accounts, stale captures and closed or used-up campaign codes are refused, and opt-in guards (same device, duplicate contact, custom) can refuse a claim with a recorded reason. Reward rules fire on facts — sign-up (user.signed_up), the first qualifying order or the Nth order (orders.order.placed) — for the referrer, the referee or both, with caps per referrer per rolling period and budgets counted under a lock on the rule row. The reward ledger is idempotent per (rule, attribution, trigger, role), holds order rewards for a period, rejects them when the order is cancelled during the hold and reverses them after it. Rewards are paid by a strategy that calls the paying brick by comm Function (billing_credit, promo_code) or just records them (noop); the module never imports auth, orders, billing or promotions.
+
+Contract: axes 4 · surface 4 · extension points 7 · operations 16 · error codes 63 · flows 3.
+Generated from docs/capabilities.json by `stapel-llms-txt` — do not edit; drift-gated by `make contract-check`.
+
+## Configuration axes — what a product switches on
+Settings keys; `default` is what you get by saying nothing. Turning an axis off unmounts the operations it gates.
+- CLAIM_REQUIRES_ACCOUNT [bool, default false] — Guests can use an invitation
+  false (default): a guest session may claim a code; the claim follows the guest into its account. true: only signed-in members can claim. Values: true, false.
+- HOLD_DAYS [enum, default 14] — Days before an order reward is paid
+  How long a reward earned by an order waits before it is paid (default 14), so a cancelled or returned order earns nothing. Sign-up rewards are paid at once unless a rule says otherwise. Values: 0 to 365.
+- REFEREE_DISPLAY [enum, default "masked"] — What inviters see of their friends
+  masked (default): the referrer's list shows a masked e-mail (a***@e***.com) per friend. hidden: no label at all, only dates and rewards. Values: hidden, masked.
+- VANITY_CODES [enum, default "off"] — Members choose their own code
+  off (default): every member keeps the code minted for them. staff: staff accounts may choose one. users: every signed-in member may choose one (guests never). A replaced code keeps working for links already shared. Values: off, staff, users.
+
+## Usage surface — call these before writing your own
+This is the answer to "does Stapel already have something for X?". `instead of` names the outside symbol this one displaces.
+### gate_function
+- call_function — stapel_referrals.strategies.call_function
+  Call the comm Function named by a settings key from a strategy; any provider failure (unreachable, raised, malformed) becomes StrategyError so the reward is retried, never refused.
+### predicate
+- idempotency_key — stapel_referrals.strategies.idempotency_key
+  The idempotency key a strategy sends with every outbound call for a reward (suffix ':reverse' for a reversal), so the beat may retry freely.
+- strategy_paths — stapel_referrals.strategies.strategy_paths
+  The effective strategy registry: built-ins merged with REWARD_STRATEGIES (None removes).
+### factory
+- get_strategy — stapel_referrals.strategies.get_strategy
+  A strategy instance for a registered name or a dotted path; LookupError when it does not resolve (rule writes answer error.400.reward_strategy_unknown).
+
+## Extension points — what a product replaces, fork-free
+- ATTRIBUTION_GUARDS [strategy]
+  Opt-in claim guards: same_device, duplicate_contact or dotted paths (ClaimContext) -> reason | None. A reason records a refused attribution that keeps the account's slot; an unmeasurable guard returns None.
+- REWARD_STRATEGIES [merge_registry]
+  How a reward is paid. {name: 'dotted.Strategy' | None} merged over noop, billing_credit and promo_code; a rule may also name a dotted path. A strategy cleans its params, states the value counted against budgets, grants with an idempotency key and reverses; StrategyError means 'not now' and the beat retries.
+- SHARE_URL_TEMPLATE [setting]
+  The share link, a template with {code}; empty answers link null rather than a guessed URL (check E003).
+- STAPEL_REFERRALS_ME_PRESENTER / _CLAIM_PRESENTER / _REFERRAL_PRESENTER / _REWARD_PRESENTER / _STAFF_PRESENTER [presenter]
+  Swap keys (STAPEL_SWAP) for every response presenter, so a host changes what the API shows without forking a view.
+- orders.order.placed [comm_event]
+  Consumed: an order placed by an attributed referee inside the qualifying window fires the first-order and Nth-order rules it qualifies for (currency, minimum total).
+- referrals.reward.granted [comm_event]
+  A reward was paid (ids, role, value, unit — never an issued code or a contact), for notifications and projections. Siblings: referrals.reward.rejected, referrals.reward.reversed, referrals.attribution.created.
+- user.signed_up [comm_event]
+  Consumed: writes the signup marker (auth's clock for the account age) and fires the signup rules of an attributed account.
+
+## Fits with — fleet dependencies
+- stapel-auth (optional) — user.signed_up fires the signup rules and dates the account; user.merged moves a guest's codes and attribution to the account; a guest row may claim a code
+- stapel-billing (optional) — the billing_credit strategy pays wallet credits through billing.credit (upstream ask B-RF1) and reverses through billing.debit
+- stapel-core (required) — comm bus (referrals.* emits, Functions, user.signed_up / user.merged / orders.* consumers), AnchorPagination, GDPR owner protocol, AppSettings
+- stapel-notifications (optional) — delivers referrals.reward_granted to the beneficiary
+- stapel-orders (optional) — orders.order.placed fires first-order and Nth-order rules; orders.order.status_changed to cancelled rejects or reverses their rewards
+- stapel-promotions (optional) — the promo_code strategy issues a single-use code of an existing promotion, assigned to the beneficiary, through promotions.codes.issue (stapel-promotions >= 0.1.0)
+
+## HTTP operations (16) — call by operationId, never by a typed path
+Paths are relative to `/referrals/api/v1/`.
+### Referrals
+- POST /claim/ — referrals_claim_create
+- GET /codes/{code}/ — referrals_codes_retrieve
+- PATCH /me/code/ — referrals_me_code_update
+- GET /me/referrals/ — referrals_me_referrals_list
+- GET /me/ — referrals_me_retrieve
+- GET /me/rewards/ — referrals_me_rewards_list
+### Referrals staff
+- POST /staff/campaign-codes/ — referrals_staff_campaign_codes_create
+- GET /staff/campaign-codes/ — referrals_staff_campaign_codes_list
+- PATCH /staff/campaign-codes/{code_id}/ — referrals_staff_campaign_codes_update
+- GET /staff/rewards/ — referrals_staff_rewards_list
+- POST /staff/rewards/{reward_id}/transition/ — referrals_staff_rewards_transition
+- POST /staff/rules/ — referrals_staff_rules_create
+- GET /staff/rules/ — referrals_staff_rules_list
+- GET /staff/rules/{rule_id}/ — referrals_staff_rules_retrieve
+- PATCH /staff/rules/{rule_id}/ — referrals_staff_rules_update
+- GET /staff/stats/ — referrals_staff_stats_retrieve
+
+## Error codes (63) — the StapelError envelope
+Render `t(code, params)`; branch UX on the remediation. Localized text lives in docs/errors.<lang>.md, not here.
+- error.400.bad_request [400] fix_input
+- error.400.captcha_invalid [400] retry
+- error.400.captcha_required [400] retry
+- error.400.code_unknown [400] fix_input
+- error.400.expected_list [400] fix_input
+- error.400.field.blank [400] fix_input {field}
+- error.400.field.does_not_exist [400] fix_input {field}
+- error.400.field.invalid [400] fix_input {field}
+- error.400.field.invalid_choice [400] fix_input {field}
+- error.400.field.max_length [400] fix_input {field,max_length}
+- error.400.field.max_value [400] fix_input {field,max_value}
+- error.400.field.min_length [400] fix_input {field,min_length}
+- error.400.field.min_value [400] fix_input {field,min_value}
+- error.400.field.null [400] fix_input {field}
+- error.400.field.required [400] fix_input {field}
+- error.400.field.unique [400] fix_input {field}
+- error.400.invalid_ad_id [400] fix_input
+- error.400.reward_params_invalid [400] fix_input {problem}
+- error.400.reward_rule_invalid [400] fix_input {problem}
+- error.400.reward_strategy_unknown [400] fix_input {strategy}
+- error.400.self_referral [400] fix_input
+- error.400.validation_error [400] fix_input
+- error.400.vanity_code_invalid [400] fix_input
+- error.400.verification_failed [400] verify
+- error.400.verification_invalid_factor [400] verify
+- error.401.unauthorized [401] reauthenticate
+- error.402.payment_required [402] retry
+- error.403.claim_requires_account [403] reauthenticate
+- error.403.forbidden [403] retry
+- error.403.network_blocked [403] contact_support
+- error.403.vanity_code_not_allowed [403] retry
+- error.403.verification_enrollment_required [403] verify
+- error.403.verification_required [403] verify
+- error.404.ad_not_found [404] retry
+- error.404.not_found [404] retry
+- error.404.referral_code_not_found [404] retry
+- error.404.reward_not_found [404] retry
+- error.404.reward_rule_not_found [404] retry
+- error.404.verification_challenge_not_found [404] verify
+- error.405.method_not_allowed [405] retry
+- error.406.not_acceptable [406] retry
+- error.408.request_timeout [408] retry
+- error.409.already_attributed [409] fix_input
+- error.409.attribution_window_closed [409] fix_input
+- error.409.claim_refused [409] fix_input
+- error.409.claim_window_closed [409] fix_input
+- error.409.code_exhausted [409] fix_input
+- error.409.code_expired [409] fix_input
+- error.409.code_taken [409] fix_input
+- error.409.conflict [409] fix_input
+- error.409.reward_transition_invalid [409] fix_input {from,to}
+- error.409.vanity_change_limit [409] fix_input {max}
+- error.410.gone [410] retry
+- error.413.payload_too_large [413] retry
+- error.415.unsupported_media_type [415] retry
+- error.422.unprocessable_entity [422] wait_and_retry
+- error.423.locked [423] wait_and_retry
+- error.423.verification_locked [423] wait_and_retry
+- error.429.rate_limit [429] wait_and_retry {retry_after_minutes}
+- error.429.too_many_requests [429] wait_and_retry
+- error.500.internal [500] contact_support
+- error.503.mandate_unavailable [503] retry
+- error.503.reward_provider_unavailable [503] wait_and_retry
+
+## Documented flows (3) — full steps in docs/flows.json
+- referrals.claim — Arrive through an invitation
+- referrals.invite — Invite a friend
+- referrals.staff — Run the referral programme

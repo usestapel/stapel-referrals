@@ -1,0 +1,2020 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "",
+    "version": "0.0.0"
+  },
+  "paths": {
+    "/referrals/api/v1/claim/": {
+      "post": {
+        "operationId": "referrals_claim_create",
+        "description": "Attribute my account to a code — once; a replay of the same code is a 200.\n\n**Permissions:** `IsAuthenticated`",
+        "tags": [
+          "Referrals"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClaimRequest"
+              }
+            },
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/ClaimRequest"
+              }
+            },
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/ClaimRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "JWTCookieAuth": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClaimResponse"
+                }
+              }
+            },
+            "description": ""
+          },
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClaimResponse"
+                }
+              }
+            },
+            "description": ""
+          }
+        }
+      }
+    },
+    "/referrals/api/v1/codes/{code}/": {
+      "get": {
+        "operationId": "referrals_codes_retrieve",
+        "description": "Is this code claimable now, and whose is it (masked)? Public.\n\n**Permissions:** `AllowAny`",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "code",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "tags": [
+          "Referrals"
+        ],
+        "security": [
+          {
+            "JWTCookieAuth": []
+          },
+          {}
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CodeLookupResponse"
+                }
+              }
+            },
+            "description": ""
+          }
+        }
+      }
+    },
+    "/referrals/api/v1/me/": {
+      "get": {
+        "operationId": "referrals_me_retrieve",
+        "description": "My code (minted on first read), share link, counts and reward totals.\n\n**Permissions:** `IsAuthenticated`",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "device_id",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Opaque client device id (same_device guard memory; only its HMAC is kept)."
+          }
+        ],
+        "tags": [
+          "Referrals"
+        ],
+        "security": [
+          {
+            "JWTCookieAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyReferralsResponse"
+                }
+              }
+            },
+            "description": ""
+          }
+        }
+      }
+    },
+    "/referrals/api/v1/me/code/": {
+      "patch": {
+        "operationId": "referrals_me_code_update",
+        "description": "Choose my own code (VANITY_CODES policy); the old code stays claimable.\n\n**Permissions:** `IsAuthenticated`",
+        "tags": [
+          "Referrals"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PatchedVanityCodeRequest"
+              }
+            },
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/PatchedVanityCodeRequest"
+              }
+            },
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/PatchedVanityCodeRequest"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "JWTCookieAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyReferralsResponse"
+                }
+              }
+            },
+            "description": ""
+          }
+        }
+      }
+    },
+    "/referrals/api/v1/me/referrals/": {
+      "get": {
+        "operationId": "referrals_me_referrals_list",
+        "description": "The accounts my codes brought in, newest first, labels masked by policy.\n\n**Permissions:** `IsAuthenticated`",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "anchor",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Opaque anchor from next_anchor/prev_anchor (exclusive)."
+          },
+          {
+            "in": "query",
+            "name": "direction",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "next",
+                "prev"
+              ]
+            },
+            "description": "Walk direction from the anchor."
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Page size, default 20, max 100."
+          }
+        ],
+        "tags": [
+          "Referrals"
+        ],
+        "security": [
+          {
+            "JWTCookieAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReferralPage"
+                }
+              }
+            },
+            "description": ""
+          }
+        }
+      }
+    },
+    "/referrals/api/v1/me/rewards/": {
+      "get": {
+        "operationId": "referrals_me_rewards_list",
+        "description": "Rewards paid (or waiting) to me, as referrer or referee.\n\n**Permissions:** `IsAuthenticated`",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "anchor",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Opaque anchor from next_anchor/prev_anchor (exclusive)."
+          },
+          {
+            "in": "query",
+            "name": "direction",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "next",
+                "prev"
+              ]
+            },
+            "description": "Walk direction from the anchor."
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Page size, default 20, max 100."
+          }
+        ],
+        "tags": [
+          "Referrals"
+        ],
+        "security": [
+          {
+            "JWTCookieAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RewardPage"
+                }
+              }
+            },
+            "description": ""
+          }
+        }
+      }
+    },
+    "/referrals/api/v1/staff/campaign-codes/": {
+      "get": {
+        "operationId": "referrals_staff_campaign_codes_list",
+        "description": "Renders a service refusal as the fleet error envelope.\n\n**Permissions:** `IsStaffUser`",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "anchor",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Opaque anchor from next_anchor/prev_anchor (exclusive)."
+          },
+          {
+            "in": "query",
+            "name": "direction",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "next",
+                "prev"
+              ]
+            },
+            "description": "Walk direction from the anchor."
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Page size, default 20, max 100."
+          }
+        ],
+        "tags": [
+          "Referrals staff"
+        ],
+        "security": [
+          {
+            "JWTCookieAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CampaignCodePage"
+                }
+              }
+            },
+            "description": ""
+          }
+        }
+      },
+      "post": {
+        "operationId": "referrals_staff_campaign_codes_create",
+        "description": "Renders a service refusal as the fleet error envelope.\n\n**Permissions:** `IsStaffUser`",
+        "tags": [
+          "Referrals staff"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CampaignCodeRequest"
+              }
+            },
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/CampaignCodeRequest"
+              }
+            },
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/CampaignCodeRequest"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "JWTCookieAuth": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CampaignCodeResponse"
+                }
+              }
+            },
+            "description": ""
+          }
+        }
+      }
+    },
+    "/referrals/api/v1/staff/campaign-codes/{code_id}/": {
+      "patch": {
+        "operationId": "referrals_staff_campaign_codes_update",
+        "description": "Renders a service refusal as the fleet error envelope.\n\n**Permissions:** `IsStaffUser`",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "code_id",
+            "schema": {
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "tags": [
+          "Referrals staff"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PatchedCampaignCodeRequest"
+              }
+            },
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/PatchedCampaignCodeRequest"
+              }
+            },
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/PatchedCampaignCodeRequest"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "JWTCookieAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CampaignCodeResponse"
+                }
+              }
+            },
+            "description": ""
+          }
+        }
+      }
+    },
+    "/referrals/api/v1/staff/rewards/": {
+      "get": {
+        "operationId": "referrals_staff_rewards_list",
+        "description": "Renders a service refusal as the fleet error envelope.\n\n**Permissions:** `IsStaffUser`",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "anchor",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Opaque anchor from next_anchor/prev_anchor (exclusive)."
+          },
+          {
+            "in": "query",
+            "name": "direction",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "next",
+                "prev"
+              ]
+            },
+            "description": "Walk direction from the anchor."
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Page size, default 20, max 100."
+          },
+          {
+            "in": "query",
+            "name": "rule",
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Filter by rule id."
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "granted",
+                  "pending",
+                  "rejected",
+                  "reversed"
+                ]
+              }
+            },
+            "description": "Filter by status (repeatable)."
+          }
+        ],
+        "tags": [
+          "Referrals staff"
+        ],
+        "security": [
+          {
+            "JWTCookieAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StaffRewardPage"
+                }
+              }
+            },
+            "description": ""
+          }
+        }
+      }
+    },
+    "/referrals/api/v1/staff/rewards/{reward_id}/transition/": {
+      "post": {
+        "operationId": "referrals_staff_rewards_transition",
+        "description": "Renders a service refusal as the fleet error envelope.\n\n**Permissions:** `IsStaffUser`",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "reward_id",
+            "schema": {
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "tags": [
+          "Referrals staff"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RewardTransitionRequest"
+              }
+            },
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/RewardTransitionRequest"
+              }
+            },
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/RewardTransitionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "JWTCookieAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StaffRewardResponse"
+                }
+              }
+            },
+            "description": ""
+          }
+        }
+      }
+    },
+    "/referrals/api/v1/staff/rules/": {
+      "get": {
+        "operationId": "referrals_staff_rules_list",
+        "description": "All reward rules (a programme has a handful) and rule creation.\n\n**Permissions:** `IsStaffUser`",
+        "tags": [
+          "Referrals staff"
+        ],
+        "security": [
+          {
+            "JWTCookieAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RewardRuleResponse"
+                  }
+                }
+              }
+            },
+            "description": ""
+          }
+        }
+      },
+      "post": {
+        "operationId": "referrals_staff_rules_create",
+        "description": "All reward rules (a programme has a handful) and rule creation.\n\n**Permissions:** `IsStaffUser`",
+        "tags": [
+          "Referrals staff"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RewardRuleRequest"
+              }
+            },
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/RewardRuleRequest"
+              }
+            },
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/RewardRuleRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "JWTCookieAuth": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RewardRuleResponse"
+                }
+              }
+            },
+            "description": ""
+          }
+        }
+      }
+    },
+    "/referrals/api/v1/staff/rules/{rule_id}/": {
+      "get": {
+        "operationId": "referrals_staff_rules_retrieve",
+        "description": "Renders a service refusal as the fleet error envelope.\n\n**Permissions:** `IsStaffUser`",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "rule_id",
+            "schema": {
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "tags": [
+          "Referrals staff"
+        ],
+        "security": [
+          {
+            "JWTCookieAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RewardRuleResponse"
+                }
+              }
+            },
+            "description": ""
+          }
+        }
+      },
+      "patch": {
+        "operationId": "referrals_staff_rules_update",
+        "description": "Renders a service refusal as the fleet error envelope.\n\n**Permissions:** `IsStaffUser`",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "rule_id",
+            "schema": {
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "tags": [
+          "Referrals staff"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PatchedRewardRuleRequest"
+              }
+            },
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/PatchedRewardRuleRequest"
+              }
+            },
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/PatchedRewardRuleRequest"
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "JWTCookieAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RewardRuleResponse"
+                }
+              }
+            },
+            "description": ""
+          }
+        }
+      }
+    },
+    "/referrals/api/v1/staff/stats/": {
+      "get": {
+        "operationId": "referrals_staff_stats_retrieve",
+        "description": "Renders a service refusal as the fleet error envelope.\n\n**Permissions:** `IsStaffUser`",
+        "tags": [
+          "Referrals staff"
+        ],
+        "security": [
+          {
+            "JWTCookieAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReferralStatsResponse"
+                }
+              }
+            },
+            "description": ""
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "BeneficiaryEnum": {
+        "enum": [
+          "referrer",
+          "referee",
+          "both"
+        ],
+        "type": "string",
+        "description": "* `referrer` - Referrer\n* `referee` - Referee\n* `both` - Both"
+      },
+      "CampaignCodePage": {
+        "type": "object",
+        "properties": {
+          "next_anchor": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 64
+          },
+          "prev_anchor": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 64
+          },
+          "has_next": {
+            "type": "boolean"
+          },
+          "has_prev": {
+            "type": "boolean"
+          },
+          "count": {
+            "type": "integer"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CampaignCodeResponse"
+            }
+          }
+        },
+        "required": [
+          "count",
+          "has_next",
+          "has_prev",
+          "items",
+          "next_anchor",
+          "prev_anchor"
+        ]
+      },
+      "CampaignCodeRequest": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "Chosen code; minted when empty. Immutable once created.",
+            "maxLength": 32
+          },
+          "label": {
+            "type": "string",
+            "maxLength": 120
+          },
+          "owner_id": {
+            "type": "string",
+            "description": "Who is the referrer; default the staff user.",
+            "maxLength": 64
+          },
+          "active": {
+            "type": "boolean"
+          },
+          "starts_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "ends_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "max_attributions": {
+            "type": "integer",
+            "minimum": 1,
+            "nullable": true
+          }
+        }
+      },
+      "CampaignCodeResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "code": {
+            "type": "string",
+            "maxLength": 32
+          },
+          "label": {
+            "type": "string",
+            "maxLength": 120
+          },
+          "owner_id": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "active": {
+            "type": "boolean"
+          },
+          "starts_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "ends_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "max_attributions": {
+            "type": "integer",
+            "nullable": true
+          },
+          "attribution_count": {
+            "type": "integer"
+          },
+          "link": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 500
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "active",
+          "attribution_count",
+          "code",
+          "created_at",
+          "ends_at",
+          "id",
+          "label",
+          "link",
+          "max_attributions",
+          "owner_id",
+          "starts_at"
+        ]
+      },
+      "ClaimRequest": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "maxLength": 32
+          },
+          "captured_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "When the client stored the code (first touch)."
+          },
+          "device_id": {
+            "type": "string",
+            "default": "",
+            "description": "Opaque client device id; only its HMAC is kept.",
+            "maxLength": 128
+          }
+        },
+        "required": [
+          "code"
+        ]
+      },
+      "ClaimResponse": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "maxLength": 32
+          },
+          "code_kind": {
+            "$ref": "#/components/schemas/CodeKindEnum"
+          },
+          "attributed_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "referrer_label": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 120
+          }
+        },
+        "required": [
+          "attributed_at",
+          "code",
+          "code_kind",
+          "referrer_label"
+        ]
+      },
+      "CodeKindEnum": {
+        "enum": [
+          "personal",
+          "campaign"
+        ],
+        "type": "string",
+        "description": "* `personal` - Personal\n* `campaign` - Campaign"
+      },
+      "CodeLookupResponse": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "maxLength": 32
+          },
+          "valid": {
+            "type": "boolean",
+            "description": "A claim of this code would pass the code checks now."
+          },
+          "kind": {
+            "nullable": true,
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/CodeKindEnum"
+              },
+              {
+                "$ref": "#/components/schemas/NullEnum"
+              }
+            ]
+          },
+          "referrer_label": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 120
+          }
+        },
+        "required": [
+          "code",
+          "kind",
+          "referrer_label",
+          "valid"
+        ]
+      },
+      "MyReferralsResponse": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "My primary personal code.",
+            "maxLength": 32
+          },
+          "link": {
+            "type": "string",
+            "nullable": true,
+            "description": "Share link from SHARE_URL_TEMPLATE; null when unset.",
+            "maxLength": 500
+          },
+          "vanity_allowed": {
+            "type": "boolean",
+            "description": "I may choose my own code (PATCH me/code/)."
+          },
+          "referred": {
+            "type": "boolean",
+            "description": "I was attributed to someone's code."
+          },
+          "counts": {
+            "$ref": "#/components/schemas/ReferralCounts"
+          },
+          "rewards_total": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RewardTotal"
+            },
+            "description": "Granted to me, summed per unit."
+          }
+        },
+        "required": [
+          "code",
+          "counts",
+          "link",
+          "referred",
+          "rewards_total",
+          "vanity_allowed"
+        ]
+      },
+      "NullEnum": {
+        "enum": [
+          null
+        ]
+      },
+      "PatchedCampaignCodeRequest": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "Chosen code; minted when empty. Immutable once created.",
+            "maxLength": 32
+          },
+          "label": {
+            "type": "string",
+            "maxLength": 120
+          },
+          "owner_id": {
+            "type": "string",
+            "description": "Who is the referrer; default the staff user.",
+            "maxLength": 64
+          },
+          "active": {
+            "type": "boolean"
+          },
+          "starts_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "ends_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "max_attributions": {
+            "type": "integer",
+            "minimum": 1,
+            "nullable": true
+          }
+        }
+      },
+      "PatchedRewardRuleRequest": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 120
+          },
+          "active": {
+            "type": "boolean",
+            "default": true
+          },
+          "trigger": {
+            "$ref": "#/components/schemas/RuleTriggerEnum"
+          },
+          "order_ordinal": {
+            "type": "integer",
+            "maximum": 1000,
+            "minimum": 1,
+            "default": 1
+          },
+          "min_order_total": {
+            "type": "string",
+            "format": "decimal",
+            "pattern": "^-?\\d{0,16}(?:\\.\\d{0,2})?$",
+            "nullable": true
+          },
+          "currency": {
+            "oneOf": [
+              {
+                "type": "string",
+                "default": "",
+                "maxLength": 3,
+                "pattern": "^[A-Za-z]{3}$"
+              },
+              {
+                "type": "string",
+                "maxLength": 0
+              }
+            ]
+          },
+          "beneficiary": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/BeneficiaryEnum"
+              }
+            ],
+            "default": "both"
+          },
+          "strategy": {
+            "type": "string",
+            "default": "noop",
+            "maxLength": 200
+          },
+          "referrer_params": {
+            "type": "object",
+            "additionalProperties": {}
+          },
+          "referee_params": {
+            "type": "object",
+            "additionalProperties": {}
+          },
+          "code_kind": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RuleCodeKindEnum"
+              }
+            ],
+            "default": "any"
+          },
+          "campaign_code": {
+            "type": "integer",
+            "nullable": true,
+            "description": "Id of a campaign code; only its attributions."
+          },
+          "starts_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "ends_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "cap_per_referrer": {
+            "type": "integer",
+            "minimum": 1,
+            "nullable": true
+          },
+          "cap_period_days": {
+            "type": "integer",
+            "maximum": 3660,
+            "minimum": 1,
+            "nullable": true
+          },
+          "budget_count": {
+            "type": "integer",
+            "minimum": 0,
+            "nullable": true
+          },
+          "budget_value": {
+            "type": "string",
+            "format": "decimal",
+            "pattern": "^-?\\d{0,16}(?:\\.\\d{0,2})?$",
+            "nullable": true
+          },
+          "hold_days": {
+            "type": "integer",
+            "maximum": 365,
+            "minimum": 0,
+            "nullable": true
+          }
+        }
+      },
+      "PatchedVanityCodeRequest": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "maxLength": 32,
+            "minLength": 4
+          }
+        }
+      },
+      "ReferralCounts": {
+        "type": "object",
+        "properties": {
+          "referrals": {
+            "type": "integer",
+            "description": "Referees attributed to my codes."
+          },
+          "rewarded_referrals": {
+            "type": "integer",
+            "description": "Referees that earned me a granted reward."
+          },
+          "pending_rewards": {
+            "type": "integer"
+          },
+          "granted_rewards": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "granted_rewards",
+          "pending_rewards",
+          "referrals",
+          "rewarded_referrals"
+        ]
+      },
+      "ReferralItem": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "referee_label": {
+            "type": "string",
+            "nullable": true,
+            "description": "Masked by REFEREE_DISPLAY; null when hidden.",
+            "maxLength": 120
+          },
+          "code_kind": {
+            "$ref": "#/components/schemas/CodeKindEnum"
+          },
+          "attributed_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "rewards_granted": {
+            "type": "integer"
+          },
+          "rewards_pending": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "attributed_at",
+          "code_kind",
+          "id",
+          "referee_label",
+          "rewards_granted",
+          "rewards_pending"
+        ]
+      },
+      "ReferralPage": {
+        "type": "object",
+        "properties": {
+          "next_anchor": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 64
+          },
+          "prev_anchor": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 64
+          },
+          "has_next": {
+            "type": "boolean"
+          },
+          "has_prev": {
+            "type": "boolean"
+          },
+          "count": {
+            "type": "integer"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReferralItem"
+            }
+          }
+        },
+        "required": [
+          "count",
+          "has_next",
+          "has_prev",
+          "items",
+          "next_anchor",
+          "prev_anchor"
+        ]
+      },
+      "ReferralStatsResponse": {
+        "type": "object",
+        "properties": {
+          "personal_codes": {
+            "type": "integer"
+          },
+          "campaign_codes": {
+            "type": "integer"
+          },
+          "attributions": {
+            "type": "integer"
+          },
+          "attributions_refused": {
+            "type": "integer"
+          },
+          "active_rules": {
+            "type": "integer"
+          },
+          "rewards": {
+            "$ref": "#/components/schemas/RuleRewardCounts"
+          },
+          "granted_value": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RewardTotal"
+            }
+          },
+          "top_referrers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TopReferrer"
+            }
+          }
+        },
+        "required": [
+          "active_rules",
+          "attributions",
+          "attributions_refused",
+          "campaign_codes",
+          "granted_value",
+          "personal_codes",
+          "rewards",
+          "top_referrers"
+        ]
+      },
+      "RewardPage": {
+        "type": "object",
+        "properties": {
+          "next_anchor": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 64
+          },
+          "prev_anchor": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 64
+          },
+          "has_next": {
+            "type": "boolean"
+          },
+          "has_prev": {
+            "type": "boolean"
+          },
+          "count": {
+            "type": "integer"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RewardResponse"
+            }
+          }
+        },
+        "required": [
+          "count",
+          "has_next",
+          "has_prev",
+          "items",
+          "next_anchor",
+          "prev_anchor"
+        ]
+      },
+      "RewardResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "rule_id": {
+            "type": "integer"
+          },
+          "rule_name": {
+            "type": "string",
+            "maxLength": 120
+          },
+          "role": {
+            "$ref": "#/components/schemas/RewardRoleEnum"
+          },
+          "trigger": {
+            "$ref": "#/components/schemas/RewardTriggerEnum"
+          },
+          "status": {
+            "$ref": "#/components/schemas/RewardStatusEnum"
+          },
+          "value": {
+            "type": "string",
+            "format": "decimal",
+            "pattern": "^-?\\d{0,16}(?:\\.\\d{0,2})?$"
+          },
+          "unit": {
+            "type": "string",
+            "maxLength": 16
+          },
+          "grant_ref": {
+            "type": "string",
+            "description": "Issued code or transaction id.",
+            "maxLength": 255
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "hold_until": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "granted_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "created_at",
+          "grant_ref",
+          "granted_at",
+          "hold_until",
+          "id",
+          "reason",
+          "role",
+          "rule_id",
+          "rule_name",
+          "status",
+          "trigger",
+          "unit",
+          "value"
+        ]
+      },
+      "RewardRoleEnum": {
+        "enum": [
+          "referrer",
+          "referee"
+        ],
+        "type": "string",
+        "description": "* `referrer` - Referrer\n* `referee` - Referee"
+      },
+      "RewardRuleRequest": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 120
+          },
+          "active": {
+            "type": "boolean",
+            "default": true
+          },
+          "trigger": {
+            "$ref": "#/components/schemas/RuleTriggerEnum"
+          },
+          "order_ordinal": {
+            "type": "integer",
+            "maximum": 1000,
+            "minimum": 1,
+            "default": 1
+          },
+          "min_order_total": {
+            "type": "string",
+            "format": "decimal",
+            "pattern": "^-?\\d{0,16}(?:\\.\\d{0,2})?$",
+            "nullable": true
+          },
+          "currency": {
+            "oneOf": [
+              {
+                "type": "string",
+                "default": "",
+                "maxLength": 3,
+                "pattern": "^[A-Za-z]{3}$"
+              },
+              {
+                "type": "string",
+                "maxLength": 0
+              }
+            ]
+          },
+          "beneficiary": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/BeneficiaryEnum"
+              }
+            ],
+            "default": "both"
+          },
+          "strategy": {
+            "type": "string",
+            "default": "noop",
+            "maxLength": 200
+          },
+          "referrer_params": {
+            "type": "object",
+            "additionalProperties": {}
+          },
+          "referee_params": {
+            "type": "object",
+            "additionalProperties": {}
+          },
+          "code_kind": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RuleCodeKindEnum"
+              }
+            ],
+            "default": "any"
+          },
+          "campaign_code": {
+            "type": "integer",
+            "nullable": true,
+            "description": "Id of a campaign code; only its attributions."
+          },
+          "starts_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "ends_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "cap_per_referrer": {
+            "type": "integer",
+            "minimum": 1,
+            "nullable": true
+          },
+          "cap_period_days": {
+            "type": "integer",
+            "maximum": 3660,
+            "minimum": 1,
+            "nullable": true
+          },
+          "budget_count": {
+            "type": "integer",
+            "minimum": 0,
+            "nullable": true
+          },
+          "budget_value": {
+            "type": "string",
+            "format": "decimal",
+            "pattern": "^-?\\d{0,16}(?:\\.\\d{0,2})?$",
+            "nullable": true
+          },
+          "hold_days": {
+            "type": "integer",
+            "maximum": 365,
+            "minimum": 0,
+            "nullable": true
+          }
+        },
+        "required": [
+          "name",
+          "trigger"
+        ]
+      },
+      "RewardRuleResponse": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 120
+          },
+          "active": {
+            "type": "boolean",
+            "default": true
+          },
+          "trigger": {
+            "$ref": "#/components/schemas/RuleTriggerEnum"
+          },
+          "order_ordinal": {
+            "type": "integer",
+            "maximum": 1000,
+            "minimum": 1,
+            "default": 1
+          },
+          "min_order_total": {
+            "type": "string",
+            "format": "decimal",
+            "pattern": "^-?\\d{0,16}(?:\\.\\d{0,2})?$",
+            "nullable": true
+          },
+          "currency": {
+            "oneOf": [
+              {
+                "type": "string",
+                "default": "",
+                "maxLength": 3,
+                "pattern": "^[A-Za-z]{3}$"
+              },
+              {
+                "type": "string",
+                "maxLength": 0
+              }
+            ]
+          },
+          "beneficiary": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/BeneficiaryEnum"
+              }
+            ],
+            "default": "both"
+          },
+          "strategy": {
+            "type": "string",
+            "default": "noop",
+            "maxLength": 200
+          },
+          "referrer_params": {
+            "type": "object",
+            "additionalProperties": {}
+          },
+          "referee_params": {
+            "type": "object",
+            "additionalProperties": {}
+          },
+          "code_kind": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/RuleCodeKindEnum"
+              }
+            ],
+            "default": "any"
+          },
+          "campaign_code": {
+            "type": "integer",
+            "nullable": true,
+            "description": "Id of a campaign code; only its attributions."
+          },
+          "starts_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "ends_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "cap_per_referrer": {
+            "type": "integer",
+            "minimum": 1,
+            "nullable": true
+          },
+          "cap_period_days": {
+            "type": "integer",
+            "maximum": 3660,
+            "minimum": 1,
+            "nullable": true
+          },
+          "budget_count": {
+            "type": "integer",
+            "minimum": 0,
+            "nullable": true
+          },
+          "budget_value": {
+            "type": "string",
+            "format": "decimal",
+            "pattern": "^-?\\d{0,16}(?:\\.\\d{0,2})?$",
+            "nullable": true
+          },
+          "hold_days": {
+            "type": "integer",
+            "maximum": 365,
+            "minimum": 0,
+            "nullable": true
+          },
+          "id": {
+            "type": "integer"
+          },
+          "rewards": {
+            "$ref": "#/components/schemas/RuleRewardCounts"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "created_at",
+          "id",
+          "name",
+          "rewards",
+          "trigger",
+          "updated_at"
+        ]
+      },
+      "RewardStatusEnum": {
+        "enum": [
+          "pending",
+          "granted",
+          "rejected",
+          "reversed"
+        ],
+        "type": "string",
+        "description": "* `pending` - Pending\n* `granted` - Granted\n* `rejected` - Rejected\n* `reversed` - Reversed"
+      },
+      "RewardTotal": {
+        "type": "object",
+        "properties": {
+          "unit": {
+            "type": "string",
+            "maxLength": 16
+          },
+          "value": {
+            "type": "string",
+            "format": "decimal",
+            "pattern": "^-?\\d{0,16}(?:\\.\\d{0,2})?$"
+          }
+        },
+        "required": [
+          "unit",
+          "value"
+        ]
+      },
+      "RewardTransitionRequest": {
+        "type": "object",
+        "properties": {
+          "to": {
+            "$ref": "#/components/schemas/RewardTransitionTargetEnum"
+          },
+          "reason": {
+            "type": "string",
+            "default": "",
+            "maxLength": 64
+          }
+        },
+        "required": [
+          "to"
+        ]
+      },
+      "RewardTransitionTargetEnum": {
+        "enum": [
+          "granted",
+          "rejected",
+          "reversed"
+        ],
+        "type": "string",
+        "description": "* `granted` - granted\n* `rejected` - rejected\n* `reversed` - reversed"
+      },
+      "RewardTriggerEnum": {
+        "enum": [
+          "signup",
+          "order"
+        ],
+        "type": "string",
+        "description": "* `signup` - Signup\n* `order` - Order"
+      },
+      "RuleCodeKindEnum": {
+        "enum": [
+          "any",
+          "personal",
+          "campaign"
+        ],
+        "type": "string",
+        "description": "* `any` - Any code\n* `personal` - Personal codes\n* `campaign` - Campaign codes"
+      },
+      "RuleRewardCounts": {
+        "type": "object",
+        "properties": {
+          "pending": {
+            "type": "integer"
+          },
+          "granted": {
+            "type": "integer"
+          },
+          "rejected": {
+            "type": "integer"
+          },
+          "reversed": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "granted",
+          "pending",
+          "rejected",
+          "reversed"
+        ]
+      },
+      "RuleTriggerEnum": {
+        "enum": [
+          "signup",
+          "first_order",
+          "nth_order"
+        ],
+        "type": "string",
+        "description": "* `signup` - Referee signed up\n* `first_order` - Referee's first qualifying order\n* `nth_order` - Referee's Nth qualifying order"
+      },
+      "StaffRewardPage": {
+        "type": "object",
+        "properties": {
+          "next_anchor": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 64
+          },
+          "prev_anchor": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 64
+          },
+          "has_next": {
+            "type": "boolean"
+          },
+          "has_prev": {
+            "type": "boolean"
+          },
+          "count": {
+            "type": "integer"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StaffRewardResponse"
+            }
+          }
+        },
+        "required": [
+          "count",
+          "has_next",
+          "has_prev",
+          "items",
+          "next_anchor",
+          "prev_anchor"
+        ]
+      },
+      "StaffRewardResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "rule_id": {
+            "type": "integer"
+          },
+          "rule_name": {
+            "type": "string",
+            "maxLength": 120
+          },
+          "role": {
+            "$ref": "#/components/schemas/RewardRoleEnum"
+          },
+          "trigger": {
+            "$ref": "#/components/schemas/RewardTriggerEnum"
+          },
+          "status": {
+            "$ref": "#/components/schemas/RewardStatusEnum"
+          },
+          "value": {
+            "type": "string",
+            "format": "decimal",
+            "pattern": "^-?\\d{0,16}(?:\\.\\d{0,2})?$"
+          },
+          "unit": {
+            "type": "string",
+            "maxLength": 16
+          },
+          "grant_ref": {
+            "type": "string",
+            "description": "Issued code or transaction id.",
+            "maxLength": 255
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "hold_until": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "granted_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "attribution_id": {
+            "type": "integer"
+          },
+          "beneficiary_id": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "referrer_id": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "trigger_id": {
+            "type": "string",
+            "maxLength": 128
+          },
+          "strategy": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "attempts": {
+            "type": "integer"
+          },
+          "last_error": {
+            "type": "string",
+            "maxLength": 500
+          },
+          "reverse_requested_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "reversed_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "required": [
+          "attempts",
+          "attribution_id",
+          "beneficiary_id",
+          "created_at",
+          "grant_ref",
+          "granted_at",
+          "hold_until",
+          "id",
+          "last_error",
+          "reason",
+          "referrer_id",
+          "reverse_requested_at",
+          "reversed_at",
+          "role",
+          "rule_id",
+          "rule_name",
+          "status",
+          "strategy",
+          "trigger",
+          "trigger_id",
+          "unit",
+          "value"
+        ]
+      },
+      "TopReferrer": {
+        "type": "object",
+        "properties": {
+          "referrer_id": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "referrals": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "referrals",
+          "referrer_id"
+        ]
+      }
+    },
+    "securitySchemes": {
+      "JWTCookieAuth": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "stapel_jwt",
+        "description": "JWT token stored in cookie. Login via /auth/admin/ to get the cookie."
+      }
+    }
+  }
+}

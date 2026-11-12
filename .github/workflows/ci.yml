@@ -1,0 +1,184 @@
+name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12", "3.13", "3.14"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      # stapel-core and siblings resolve from PyPI by the declared range;
+      # git-main core is the advisory `core-main` job below.
+      # Optional dependencies are NOT optional for the test job: a test that
+      # imports celery, boto3 or a vendor SDK fails at collection when CI
+      # installed the base package only — a red run on green code, and two
+      # release numbers burned before anyone reads the traceback.
+      # `pip install ".[all]" || pip install .` hid a genuine resolution
+      # failure behind the fallback, so the extra is chosen from
+      # pyproject.toml instead of from whether the first install crashed.
+      - name: Install (with the `all` extra when this package declares one)
+        run: |
+          if python -c "import sys, tomllib; sys.exit(0 if 'all' in tomllib.load(open('pyproject.toml', 'rb')).get('project', {}).get('optional-dependencies', {}) else 1)"; then
+            echo "pyproject declares an [all] extra — installing it"
+            pip install ".[all]"
+          else
+            pip install .
+          fi
+
+      - name: Lint
+        run: |
+          pip install ruff --quiet
+          ruff check . --select E,F,W --ignore E501
+
+      - name: Import check
+        run: python -c "import stapel_referrals; print('import OK')"
+
+      # The suite's dependencies are DECLARED, in the `test` extra, and CI
+      # installs exactly that. A hand-typed list here is how three releases
+      # shipped red in one night (2026-08-24): a test imported a sibling the
+      # shared development virtualenv happened to have, nothing declared it,
+      # and the runner was the first machine to find out.
+      - name: Install test dependencies (the declared `test` extra)
+        run: pip install -e ".[test]"
+
+      # The gate over that declaration: SIB001-003 (an undeclared sibling
+      # imported, named in INSTALLED_APPS, or hidden behind importorskip),
+      # SIB004 (a declared sibling skip-guarded with no strict flag), SIB005
+      # (an extra nothing uses), SIB006 (a foreign-owned key in the committed
+      # docs/errors.json).
+      - name: The suite declares its own siblings (stapel-sibling-lint)
+        run: |
+          pip install "stapel-tools>=0.55.0,<1" --quiet
+          stapel-sibling-lint .
+
+      - name: Fleet gates (stapel-verify arsenal, migrations, outbox atomicity)
+        run: |
+          stapel-verify .
+          stapel-schema-lint . --strict
+          stapel-migration-lint . --strict
+          python -m stapel_core.lint.emit_check .
+
+      - name: Tests with coverage
+        # Strict siblings: a DECLARED sibling that is missing FAILS instead of
+        # skipping. A quiet skip on CI means the install step above did not do
+        # what it says, which is the other half of this defect class.
+        env:
+          STAPEL_TEST_STRICT_SIBLINGS: "1"
+        run: |
+          pytest tests/ \
+            --cov=stapel_referrals \
+            --cov-report=term-missing \
+            --cov-report=xml \
+            --junitxml=junit.xml \
+            -o junit_family=legacy \
+            -v
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        if: ${{ !cancelled() }}
+        continue-on-error: true
+        with:
+          files: coverage.xml
+          flags: stapel-referrals
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+      - name: Upload test results to Codecov
+        uses: codecov/test-results-action@v1
+        if: ${{ !cancelled() }}
+        continue-on-error: true
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+  core-main:
+    # Advisory: the same suite against stapel-core's main branch.
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install stapel-core from main
+        run: pip install git+https://github.com/usestapel/stapel-core.git
+      - name: Install with the test extra
+        run: pip install -e ".[test]"
+      - name: Tests
+        env:
+          STAPEL_TEST_STRICT_SIBLINGS: "1"
+        run: pytest tests/ -v
+
+  release-track:
+    # Release gate: install as an end user, dependencies from PyPI by pin.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install as an end user (deps resolved from PyPI by pin)
+        run: pip install .
+      - name: stapel-core resolved from PyPI satisfies the declared pin
+        run: |
+          cd "$RUNNER_TEMP" && python -c "
+          import importlib.metadata as m, re, tomllib
+          from pathlib import Path
+          pyproject = tomllib.loads(Path('$GITHUB_WORKSPACE/pyproject.toml').read_text())
+          dep = next(d for d in pyproject['project']['dependencies'] if d.startswith('stapel-core'))
+          floor_s, ceil_s = re.search(r'>=([\d.]+),<([\d.]+)', dep).groups()
+          floor = tuple(map(int, floor_s.split('.'))); ceil = tuple(map(int, ceil_s.split('.')))
+          v = m.version('stapel-core'); got = tuple(map(int, v.split('.')[:len(floor)]))
+          print(f'stapel-core {v} against {dep!r}')
+          assert floor <= got < ceil, f'{v} outside declared range {dep!r}'
+          "
+      - name: Import smoke (installed package, from a clean dir)
+        run: cd "$RUNNER_TEMP" && python -c "import stapel_referrals; print('release-track import OK')"
+
+  # The row-lock proofs (tests/test_concurrency_pg.py: reward caps, budgets,
+  # the campaign-code cap, one attribution per referee, lazy code minting)
+  # need real row locks; SQLite has none and skips them. This job runs the
+  # WHOLE suite on PostgreSQL and fails when anything is skipped, so the
+  # proofs cannot go quietly unarmed.
+  postgres-locks:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: rf
+          POSTGRES_PASSWORD: rf
+          POSTGRES_DB: rf
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U rf" --health-interval 5s
+          --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install
+        run: pip install -e ".[test]" "psycopg[binary]>=3.1"
+      - name: Suite on PostgreSQL (no skips allowed)
+        env:
+          STAPEL_TEST_STRICT_SIBLINGS: "1"
+          STAPEL_TEST_DATABASE_URL: postgres://rf:rf@127.0.0.1:5432/rf
+        run: |
+          set -o pipefail
+          python -m pytest tests -q -rs | tee pytest.out
+          if grep -q "skipped" pytest.out; then echo "a proof was skipped on PostgreSQL"; exit 1; fi

@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "referrals.attribution.get",
+  "description": "Was this account referred, and by whom? Payload {user_id}. Returns {referred: bool, referrer_id: str|null, code_kind: 'personal'|'campaign'|null, attributed_at: ISO 8601|null}; a refused attribution answers referred=false.",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "string",
+      "maxLength": 64
+    }
+  },
+  "required": [
+    "user_id"
+  ],
+  "additionalProperties": false
+}

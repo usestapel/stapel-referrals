@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "referrals.export",
+  "description": "The reward ledger as a cursor snapshot (source_of_truth shape). Payload {cursor?, limit? (1-500, default 100)}. Returns {rows: [{reward_id, rule_id, attribution_id, role, beneficiary_id, referrer_id, trigger, status, strategy, value, unit, created_at, seq}], cursor: str|null, total: int}.",
+  "type": "object",
+  "properties": {
+    "cursor": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "limit": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 500
+    }
+  },
+  "additionalProperties": false
+}
