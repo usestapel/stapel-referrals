@@ -27,6 +27,11 @@ Pre-1.0 semver: **minor = breaking**, patch = compatible.
   never records debt), `promo_code` (`promotions.codes.issue` with an
   idempotency key, `promotions.codes.revoke {code, reason}`; a redeemed code
   ends `already_spent`), dotted path for custom ones.
+- **Error catalogs** `translations/errors.{ru,es}.json` for the 21 codes in
+  `errors.py` (with the `.state.json` provenance sidecar), shipped in the
+  wheel, and the per-language error reference `docs/errors.{en,ru,es}.md`;
+  `tests/test_error_i18n.py` gates coverage, drift, placeholders, foreign
+  keys and packaging.
 - Sign-up carriage: `user.signed_up.signup_context` (stapel-auth >= 0.51.0)
   with `referral_code` / `referral_captured_at` attributes the account
   (source `signup`); `POST claim/` stays for older auth and guests, and both

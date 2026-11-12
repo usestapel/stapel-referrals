@@ -67,7 +67,7 @@ packages = [
 # `stapel-catalog --from-installed` possible, i.e. what turns catalog
 # freshness from somebody's discipline into a property of the lockfile.
 # A module that keeps them repo-only publishes code an agent cannot read.
-stapel_referrals = ["py.typed", "docs/capabilities.json", "docs/flows.json", "docs/errors.json", "docs/llms.txt", "CONFIG.MD", "migrations/*.py", "schemas/**/*.json"]
+stapel_referrals = ["py.typed", "docs/capabilities.json", "docs/flows.json", "docs/errors.json", "docs/llms.txt", "CONFIG.MD", "migrations/*.py", "schemas/**/*.json", "translations/*.json"]
 
 [tool.ruff]
 target-version = "py311"

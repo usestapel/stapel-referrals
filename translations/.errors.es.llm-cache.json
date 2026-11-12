@@ -1,0 +1,86 @@
+{
+  "error.400.code_unknown": {
+    "hash": "aa847474882ab5ef",
+    "text": "Este código de invitación no es válido"
+  },
+  "error.400.reward_params_invalid": {
+    "hash": "c80eafe4a3651ddb",
+    "text": "Los parámetros de la recompensa no son válidos: {problem}"
+  },
+  "error.400.reward_rule_invalid": {
+    "hash": "e7ac856e57e5b7ca",
+    "text": "La regla de recompensa no es válida: {problem}"
+  },
+  "error.400.reward_strategy_unknown": {
+    "hash": "962291235676bf75",
+    "text": "Estrategia de recompensa desconocida {strategy}"
+  },
+  "error.400.self_referral": {
+    "hash": "69842057c803db4b",
+    "text": "No puedes usar tu propio código de invitación"
+  },
+  "error.400.vanity_code_invalid": {
+    "hash": "b955fc0f9f3305e3",
+    "text": "Un código tiene de 4 a 32 letras, dígitos, '-' o '_'"
+  },
+  "error.403.claim_requires_account": {
+    "hash": "8e515c076a2868b3",
+    "text": "Inicia sesión para usar un código de invitación"
+  },
+  "error.403.vanity_code_not_allowed": {
+    "hash": "e4f8384bbdfe6a2c",
+    "text": "No se puede elegir un código propio"
+  },
+  "error.404.referral_code_not_found": {
+    "hash": "42c9a2bd1c82b4f6",
+    "text": "Código de invitación no encontrado"
+  },
+  "error.404.reward_not_found": {
+    "hash": "9a9fbfa7631d6ba3",
+    "text": "Recompensa no encontrada"
+  },
+  "error.404.reward_rule_not_found": {
+    "hash": "415ef1e1156c7cda",
+    "text": "Regla de recompensa no encontrada"
+  },
+  "error.409.already_attributed": {
+    "hash": "6693610feef731d2",
+    "text": "Ya has usado un código de invitación"
+  },
+  "error.409.attribution_window_closed": {
+    "hash": "b72770d77d27fe60",
+    "text": "Esta invitación ha caducado"
+  },
+  "error.409.claim_refused": {
+    "hash": "4e46dd0c790491b7",
+    "text": "Este código de invitación no se puede usar desde esta cuenta"
+  },
+  "error.409.claim_window_closed": {
+    "hash": "f064f41e219577b1",
+    "text": "Los códigos de invitación son para cuentas nuevas"
+  },
+  "error.409.code_exhausted": {
+    "hash": "88f19da819a0b286",
+    "text": "Este código de invitación se ha agotado"
+  },
+  "error.409.code_expired": {
+    "hash": "9e3f1eeb21b3a47a",
+    "text": "Este código de invitación no está activo ahora"
+  },
+  "error.409.code_taken": {
+    "hash": "43954fb60a6a0a0a",
+    "text": "Este código ya está en uso; elige otro"
+  },
+  "error.409.reward_transition_invalid": {
+    "hash": "0eacb2792179a6f7",
+    "text": "La recompensa no puede pasar de {from} a {to}"
+  },
+  "error.409.vanity_change_limit": {
+    "hash": "ac042eabdfa3ca61",
+    "text": "Ya no puedes cambiar tu código (como máximo {max} cambios)"
+  },
+  "error.503.reward_provider_unavailable": {
+    "hash": "bb950fe9b5161d10",
+    "text": "No se pudo emitir la recompensa ahora; se volverá a intentar"
+  }
+}

@@ -1,0 +1,86 @@
+{
+  "error.400.code_unknown": {
+    "hash": "aa847474882ab5ef",
+    "text": "Такого кода приглашения нет"
+  },
+  "error.400.reward_params_invalid": {
+    "hash": "c80eafe4a3651ddb",
+    "text": "Параметры награды неверны: {problem}"
+  },
+  "error.400.reward_rule_invalid": {
+    "hash": "e7ac856e57e5b7ca",
+    "text": "Правило награды неверно: {problem}"
+  },
+  "error.400.reward_strategy_unknown": {
+    "hash": "962291235676bf75",
+    "text": "Неизвестный способ награды {strategy}"
+  },
+  "error.400.self_referral": {
+    "hash": "69842057c803db4b",
+    "text": "Нельзя воспользоваться собственным кодом приглашения"
+  },
+  "error.400.vanity_code_invalid": {
+    "hash": "b955fc0f9f3305e3",
+    "text": "Код — от 4 до 32 букв, цифр, «-» или «_»"
+  },
+  "error.403.claim_requires_account": {
+    "hash": "8e515c076a2868b3",
+    "text": "Войдите, чтобы воспользоваться кодом приглашения"
+  },
+  "error.403.vanity_code_not_allowed": {
+    "hash": "e4f8384bbdfe6a2c",
+    "text": "Выбрать свой код нельзя"
+  },
+  "error.404.referral_code_not_found": {
+    "hash": "42c9a2bd1c82b4f6",
+    "text": "Код приглашения не найден"
+  },
+  "error.404.reward_not_found": {
+    "hash": "9a9fbfa7631d6ba3",
+    "text": "Награда не найдена"
+  },
+  "error.404.reward_rule_not_found": {
+    "hash": "415ef1e1156c7cda",
+    "text": "Правило награды не найдено"
+  },
+  "error.409.already_attributed": {
+    "hash": "6693610feef731d2",
+    "text": "Вы уже воспользовались кодом приглашения"
+  },
+  "error.409.attribution_window_closed": {
+    "hash": "b72770d77d27fe60",
+    "text": "Срок этого приглашения истёк"
+  },
+  "error.409.claim_refused": {
+    "hash": "4e46dd0c790491b7",
+    "text": "Этот код приглашения нельзя использовать с этой учётной записи"
+  },
+  "error.409.claim_window_closed": {
+    "hash": "f064f41e219577b1",
+    "text": "Коды приглашения — только для новых учётных записей"
+  },
+  "error.409.code_exhausted": {
+    "hash": "88f19da819a0b286",
+    "text": "Этот код приглашения исчерпан"
+  },
+  "error.409.code_expired": {
+    "hash": "9e3f1eeb21b3a47a",
+    "text": "Этот код приглашения сейчас не действует"
+  },
+  "error.409.code_taken": {
+    "hash": "43954fb60a6a0a0a",
+    "text": "Этот код занят — выберите другой"
+  },
+  "error.409.reward_transition_invalid": {
+    "hash": "0eacb2792179a6f7",
+    "text": "Награду нельзя перевести из {from} в {to}"
+  },
+  "error.409.vanity_change_limit": {
+    "hash": "ac042eabdfa3ca61",
+    "text": "Код больше менять нельзя (не более {max} раз)"
+  },
+  "error.503.reward_provider_unavailable": {
+    "hash": "bb950fe9b5161d10",
+    "text": "Награду не удалось выдать сейчас; попытка повторится"
+  }
+}

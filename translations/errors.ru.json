@@ -1,0 +1,23 @@
+{
+  "error.400.code_unknown": "Такого кода приглашения нет",
+  "error.400.reward_params_invalid": "Параметры награды неверны: {problem}",
+  "error.400.reward_rule_invalid": "Правило награды неверно: {problem}",
+  "error.400.reward_strategy_unknown": "Неизвестный способ награды {strategy}",
+  "error.400.self_referral": "Нельзя воспользоваться собственным кодом приглашения",
+  "error.400.vanity_code_invalid": "Код — от 4 до 32 букв, цифр, «-» или «_»",
+  "error.403.claim_requires_account": "Войдите, чтобы воспользоваться кодом приглашения",
+  "error.403.vanity_code_not_allowed": "Выбрать свой код нельзя",
+  "error.404.referral_code_not_found": "Код приглашения не найден",
+  "error.404.reward_not_found": "Награда не найдена",
+  "error.404.reward_rule_not_found": "Правило награды не найдено",
+  "error.409.already_attributed": "Вы уже воспользовались кодом приглашения",
+  "error.409.attribution_window_closed": "Срок этого приглашения истёк",
+  "error.409.claim_refused": "Этот код приглашения нельзя использовать с этой учётной записи",
+  "error.409.claim_window_closed": "Коды приглашения — только для новых учётных записей",
+  "error.409.code_exhausted": "Этот код приглашения исчерпан",
+  "error.409.code_expired": "Этот код приглашения сейчас не действует",
+  "error.409.code_taken": "Этот код занят — выберите другой",
+  "error.409.reward_transition_invalid": "Награду нельзя перевести из {from} в {to}",
+  "error.409.vanity_change_limit": "Код больше менять нельзя (не более {max} раз)",
+  "error.503.reward_provider_unavailable": "Награду не удалось выдать сейчас; попытка повторится"
+}

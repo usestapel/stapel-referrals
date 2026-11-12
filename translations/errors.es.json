@@ -1,0 +1,23 @@
+{
+  "error.400.code_unknown": "Este código de invitación no es válido",
+  "error.400.reward_params_invalid": "Los parámetros de la recompensa no son válidos: {problem}",
+  "error.400.reward_rule_invalid": "La regla de recompensa no es válida: {problem}",
+  "error.400.reward_strategy_unknown": "Estrategia de recompensa desconocida {strategy}",
+  "error.400.self_referral": "No puedes usar tu propio código de invitación",
+  "error.400.vanity_code_invalid": "Un código tiene de 4 a 32 letras, dígitos, '-' o '_'",
+  "error.403.claim_requires_account": "Inicia sesión para usar un código de invitación",
+  "error.403.vanity_code_not_allowed": "No se puede elegir un código propio",
+  "error.404.referral_code_not_found": "Código de invitación no encontrado",
+  "error.404.reward_not_found": "Recompensa no encontrada",
+  "error.404.reward_rule_not_found": "Regla de recompensa no encontrada",
+  "error.409.already_attributed": "Ya has usado un código de invitación",
+  "error.409.attribution_window_closed": "Esta invitación ha caducado",
+  "error.409.claim_refused": "Este código de invitación no se puede usar desde esta cuenta",
+  "error.409.claim_window_closed": "Los códigos de invitación son para cuentas nuevas",
+  "error.409.code_exhausted": "Este código de invitación se ha agotado",
+  "error.409.code_expired": "Este código de invitación no está activo ahora",
+  "error.409.code_taken": "Este código ya está en uso; elige otro",
+  "error.409.reward_transition_invalid": "La recompensa no puede pasar de {from} a {to}",
+  "error.409.vanity_change_limit": "Ya no puedes cambiar tu código (como máximo {max} cambios)",
+  "error.503.reward_provider_unavailable": "No se pudo emitir la recompensa ahora; se volverá a intentar"
+}
