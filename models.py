@@ -79,6 +79,12 @@ class RewardStatus(models.TextChoices):
     REVERSED = "reversed", "Reversed"
 
 
+class ReversalOutcome(models.TextChoices):
+    REVERSED = "reversed", "Taken back in full"
+    PARTIAL = "reversed_partial", "Taken back in part; the rest was already spent"
+    SPENT = "already_spent", "Nothing to take back; already spent"
+
+
 class TriggerKind(models.TextChoices):
     SIGNUP = "signup", "Signup"
     ORDER = "order", "Order"
@@ -288,6 +294,14 @@ class Reward(models.Model):
     reverse_requested_at = models.DateTimeField(
         null=True, blank=True, help_text="A reversal waits for the strategy.",
     )
+    reversal_outcome = models.CharField(
+        max_length=16, choices=ReversalOutcome.choices, blank=True, default="",
+        help_text="What the reversal took back; empty until reversed_at.",
+    )
+    reversed_value = _value_field(
+        null=True, blank=True,
+        help_text="Value taken back; the strategy's plan while a reversal is in flight.",
+    )
     attempts = models.PositiveIntegerField(default=0, help_text="Strategy calls made.")
     last_error = models.CharField(
         max_length=ERROR_MAX_LENGTH, blank=True, default="",
@@ -320,6 +334,10 @@ class SignupMarker(models.Model):
 
     user_id = models.CharField(max_length=USER_ID_MAX_LENGTH, unique=True, help_text="The account.")
     signed_up_at = models.DateTimeField(help_text="registered_at from the fact (auth's clock).")
+    auth_type = models.CharField(
+        max_length=32, blank=True, default="",
+        help_text="auth_type from the fact: the identity a paying brick may materialise the user from.",
+    )
 
     class Meta:
         app_label = "referrals"

@@ -56,7 +56,8 @@ def handle_user_signed_up(event):
     signed_up_at = _instant(payload.get("registered_at")) or timezone.now()
     try:
         with transaction.atomic():
-            SignupMarker.objects.get_or_create(user_id=user_id, defaults={"signed_up_at": signed_up_at})
+            SignupMarker.objects.get_or_create(user_id=user_id, defaults={
+                "signed_up_at": signed_up_at, "auth_type": str(payload.get("auth_type") or "")[:32]})
     except IntegrityError:
         pass
     rewards.on_signup(user_id)

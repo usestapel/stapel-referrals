@@ -36,6 +36,7 @@ class Migration(migrations.Migration):
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('user_id', models.CharField(help_text='The account.', max_length=64, unique=True)),
                 ('signed_up_at', models.DateTimeField(help_text="registered_at from the fact (auth's clock).")),
+                ('auth_type', models.CharField(blank=True, default='', help_text='auth_type from the fact: the identity a paying brick may materialise the user from.', max_length=32)),
             ],
         ),
         migrations.CreateModel(
@@ -146,6 +147,8 @@ class Migration(migrations.Migration):
                 ('rejected_at', models.DateTimeField(blank=True, help_text='When it was rejected.', null=True)),
                 ('reversed_at', models.DateTimeField(blank=True, help_text='When the reversal was confirmed.', null=True)),
                 ('reverse_requested_at', models.DateTimeField(blank=True, help_text='A reversal waits for the strategy.', null=True)),
+                ('reversal_outcome', models.CharField(blank=True, choices=[('reversed', 'Taken back in full'), ('reversed_partial', 'Taken back in part; the rest was already spent'), ('already_spent', 'Nothing to take back; already spent')], default='', help_text='What the reversal took back; empty until reversed_at.', max_length=16)),
+                ('reversed_value', models.DecimalField(blank=True, decimal_places=2, help_text="Value taken back; the strategy's plan while a reversal is in flight.", max_digits=18, null=True)),
                 ('attempts', models.PositiveIntegerField(default=0, help_text='Strategy calls made.')),
                 ('last_error', models.CharField(blank=True, default='', help_text='Last infrastructure failure (never a domain decision).', max_length=500)),
                 ('created_at', models.DateTimeField(auto_now_add=True, help_text='When the trigger was recorded.')),

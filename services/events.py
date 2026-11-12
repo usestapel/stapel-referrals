@@ -48,6 +48,9 @@ def reward_payload(reward) -> dict:
     }
     if reward.reason:
         payload["reason"] = reward.reason
+    if reward.reversal_outcome:
+        payload["reversal_outcome"] = reward.reversal_outcome
+        payload["reversed_value"] = f"{reward.reversed_value or 0:.2f}"
     return payload
 
 

@@ -1364,6 +1364,15 @@
           "top_referrers"
         ]
       },
+      "ReversalOutcomeEnum": {
+        "enum": [
+          "reversed",
+          "reversed_partial",
+          "already_spent"
+        ],
+        "type": "string",
+        "description": "* `reversed` - Taken back in full\n* `reversed_partial` - Taken back in part; the rest was already spent\n* `already_spent` - Nothing to take back; already spent"
+      },
       "RewardPage": {
         "type": "object",
         "properties": {
@@ -1964,6 +1973,25 @@
             "type": "string",
             "format": "date-time",
             "nullable": true
+          },
+          "reversal_outcome": {
+            "nullable": true,
+            "description": "Null until reversed: reversed, reversed_partial (the rest was spent) or already_spent.\n\n* `reversed` - Taken back in full\n* `reversed_partial` - Taken back in part; the rest was already spent\n* `already_spent` - Nothing to take back; already spent",
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/ReversalOutcomeEnum"
+              },
+              {
+                "$ref": "#/components/schemas/NullEnum"
+              }
+            ]
+          },
+          "reversed_value": {
+            "type": "string",
+            "format": "decimal",
+            "pattern": "^-?\\d{0,16}(?:\\.\\d{0,2})?$",
+            "nullable": true,
+            "description": "Value taken back; null until reversed."
           }
         },
         "required": [
@@ -1978,8 +2006,10 @@
           "last_error",
           "reason",
           "referrer_id",
+          "reversal_outcome",
           "reverse_requested_at",
           "reversed_at",
+          "reversed_value",
           "role",
           "rule_id",
           "rule_name",

@@ -146,7 +146,7 @@ class TestOrders:
         assert {r.status for r in Reward.objects.all()} == {"reversed"}
         debits = providers.calls["billing.debit"]
         assert sorted(d["credits"] for d in debits) == [50, 100]
-        assert all(d["allow_partial"] and d["idempotency_key"].endswith(":reverse") for d in debits)
+        assert all("allow_partial" not in d and d["idempotency_key"].endswith(":reverse") for d in debits)
         assert [e.event_type for e in captured_events].count("referrals.reward.reversed") == 2
 
     def test_cancel_after_the_reversal_window_keeps_the_grant(self, referred, referee):

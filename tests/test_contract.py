@@ -29,7 +29,7 @@ LLMS_TXT_BUDGET = "6000"
 STABLE_COMPONENTS = {
     "BeneficiaryEnum", "CampaignCodePage", "CampaignCodeRequest", "CampaignCodeResponse", "ClaimRequest",
     "ClaimResponse", "CodeKindEnum", "CodeLookupResponse", "MyReferralsResponse", "NullEnum",
-    "PatchedCampaignCodeRequest", "PatchedRewardRuleRequest", "PatchedVanityCodeRequest", "ReferralCounts",
+    "PatchedCampaignCodeRequest", "PatchedRewardRuleRequest", "PatchedVanityCodeRequest", "ReferralCounts", "ReversalOutcomeEnum",
     "ReferralItem", "ReferralPage", "ReferralStatsResponse", "RewardPage", "RewardResponse", "RewardRoleEnum",
     "RewardRuleRequest", "RewardRuleResponse", "RewardStatusEnum", "RewardTotal", "RewardTransitionRequest",
     "RewardTransitionTargetEnum", "RewardTriggerEnum", "RuleCodeKindEnum", "RuleRewardCounts",

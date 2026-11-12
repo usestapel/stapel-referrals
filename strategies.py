@@ -25,6 +25,8 @@ from __future__ import annotations
 import datetime as dt
 from decimal import Decimal, InvalidOperation
 
+from dataclasses import dataclass
+
 from django.utils.module_loading import import_string
 
 BUILTIN_STRATEGIES = {
@@ -39,6 +41,31 @@ class StrategyError(Exception):
 
     Never a domain decision: the reward stays where it was and is retried.
     """
+
+
+class StrategyConflict(StrategyError):
+    """The provider says our idempotency key names a different operation.
+
+    Retrying cannot fix it and granting it would be a guess: the reward stays
+    pending with ``last_error`` and the service logs an ERROR for a person.
+    """
+
+
+class StrategyRefused(Exception):
+    """The provider answered a domain "no" (the beneficiary is unknown or
+    inactive there): the reward is rejected with ``reason``, not retried."""
+
+    def __init__(self, reason: str):
+        super().__init__(reason)
+        self.reason = reason
+
+
+@dataclass(frozen=True)
+class Reversal:
+    """What ``reverse()`` took back. ``None`` from ``reverse()`` means "all of it"."""
+
+    outcome: str
+    value: Decimal
 
 
 class RewardStrategy:
@@ -63,8 +90,12 @@ class RewardStrategy:
         """Pay *reward*; return a reference (transaction id, code, '')."""
         return ""
 
-    def reverse(self, reward) -> None:
-        """Take *reward* back. Raise ``StrategyError`` to retry later."""
+    def reverse(self, reward) -> Reversal | None:
+        """Take *reward* back. Raise ``StrategyError`` to retry later.
+
+        Return a :class:`Reversal` when less than the whole value came back
+        (``reversed_partial`` / ``already_spent``); ``None`` is a full reversal.
+        """
 
 
 def _decimal(raw) -> Decimal:
@@ -135,12 +166,52 @@ class NoopStrategy(RewardStrategy):
         return params
 
 
+def _beneficiary_identity(user_id: str) -> dict | None:
+    """The ``identity`` a paying brick may create a user it has not met from.
+
+    Only an account whose ``user.signed_up`` this module saw has one: a
+    signed-up account is not anonymous and its ``auth_type`` came with the
+    fact. Anyone else goes without, and the provider decides on the bare id
+    (which never creates a row).
+    """
+    from .models import SignupMarker
+
+    marker = SignupMarker.objects.filter(user_id=str(user_id)).first()
+    if marker is None:
+        return None
+    identity = {"is_anonymous": False}
+    if marker.auth_type:
+        identity["auth_type"] = marker.auth_type
+    return identity
+
+
 class BillingCreditStrategy(RewardStrategy):
-    """Wallet credits: ``{credits, expires_in_days?, description?}``."""
+    """Wallet credits: ``{credits, expires_in_days?, description?}``.
+
+    Grant: ``billing.credit`` (stapel-billing >= 0.25.0) with the key
+    ``referrals:reward:<id>`` and the beneficiary's ``identity`` when known.
+    Answers: ``ok`` -> granted (``grant_ref`` = transaction id);
+    ``user_unknown`` / ``user_inactive`` -> rejected with that reason;
+    ``idempotency_conflict`` -> :class:`StrategyConflict` (pending, ERROR);
+    anything else or no answer -> retried.
+
+    Reversal: ``billing.debit`` with ``referrals:reward:<id>:reverse``, never
+    ``allow_partial`` (that would record a debt the referral never was). The
+    planned amount is stored on the reward before the call, so a retry after
+    a lost answer replays the same request under the same key. When the
+    wallet holds less than the credit, the plan drops to the balance and the
+    reversal ends ``reversed_partial`` (or ``already_spent`` at zero): spent
+    referral credits are not clawed back as debt.
+    """
 
     name = "billing_credit"
     unit = "credits"
     function_settings = ("BILLING_CREDIT_FUNCTION", "BILLING_DEBIT_FUNCTION")
+
+    #: billing.credit / billing.debit answers this strategy maps.
+    REFUSALS = frozenset({"user_unknown", "user_inactive"})
+    CONFLICT = "idempotency_conflict"
+    INSUFFICIENT = "insufficient_credits"
 
     def clean_params(self, params):
         params = super().clean_params(params)
@@ -157,6 +228,22 @@ class BillingCreditStrategy(RewardStrategy):
     def _metadata(self, reward) -> dict:
         return {"referral_reward_id": str(reward.pk), "rule_id": str(reward.rule_id), "role": reward.role}
 
+    def _with_identity(self, payload: dict, reward) -> dict:
+        identity = _beneficiary_identity(reward.beneficiary_id)
+        if identity:
+            payload["identity"] = identity
+        return payload
+
+    def _answer(self, result: dict, what: str) -> None:
+        if result.get("ok") is True:
+            return
+        reason = str(result.get("reason") or "")
+        if reason in self.REFUSALS:
+            raise StrategyRefused(reason)
+        if reason == self.CONFLICT:
+            raise StrategyConflict(f"billing refused the {what}: {reason}")
+        raise StrategyError(f"billing refused the {what}: {reason or 'no reason'}")
+
     def grant(self, reward):
         params = reward.params or {}
         payload = {
@@ -171,24 +258,44 @@ class BillingCreditStrategy(RewardStrategy):
         expires_at = _expires_at(params)
         if expires_at:
             payload["expires_at"] = expires_at
-        result = call_function("BILLING_CREDIT_FUNCTION", payload)
-        if result.get("ok") is False:
-            raise StrategyError(f"billing refused the credit: {result.get('reason') or 'no reason'}")
+        result = call_function("BILLING_CREDIT_FUNCTION", self._with_identity(payload, reward))
+        self._answer(result, "credit")
         return str(result.get("transaction_id") or "")
 
+    def _plan(self, reward, credits: int) -> None:
+        type(reward).objects.filter(pk=reward.pk).update(reversed_value=Decimal(credits))
+        reward.reversed_value = Decimal(credits)
+
     def reverse(self, reward):
-        params = reward.params or {}
-        result = call_function("BILLING_DEBIT_FUNCTION", {
-            "user_id": reward.beneficiary_id,
-            "credits": int(params["credits"]),
-            "idempotency_key": idempotency_key(reward, ":reverse"),
-            "allow_partial": True,
-            "type": "adjustment",
-            "description": "Referral reward reversed",
-            "metadata": self._metadata(reward),
-        })
-        if result.get("ok") is False:
-            raise StrategyError(f"billing refused the reversal: {result.get('reason') or 'no reason'}")
+        full = int((reward.params or {})["credits"])
+        planned = full if reward.reversed_value is None else int(reward.reversed_value)
+        if reward.reversed_value is None:
+            self._plan(reward, planned)
+        while planned > 0:
+            result = call_function("BILLING_DEBIT_FUNCTION", self._with_identity({
+                "user_id": reward.beneficiary_id,
+                "credits": planned,
+                "idempotency_key": idempotency_key(reward, ":reverse"),
+                "type": "adjustment",
+                "description": "Referral reward reversed",
+                "metadata": {**self._metadata(reward), "requested": full},
+            }, reward))
+            if result.get("ok") is True:
+                break
+            reason = result.get("reason")
+            balance = result.get("balance")
+            if reason in self.REFUSALS:
+                planned = 0  # no wallet to take from: the account is gone or never paid
+            elif reason == self.INSUFFICIENT and isinstance(balance, int) and balance < planned:
+                planned = max(0, balance)  # nothing was debited under the key yet
+            else:
+                self._answer(result, "reversal")
+                raise StrategyError(f"billing refused the reversal: {reason or 'no reason'}")
+            self._plan(reward, planned)
+        if planned == full:
+            return None
+        outcome = "reversed_partial" if planned else "already_spent"
+        return Reversal(outcome=outcome, value=Decimal(planned).quantize(Decimal("0.01")))
 
 
 class PromoCodeStrategy(RewardStrategy):
@@ -276,8 +383,11 @@ __all__ = [
     "BillingCreditStrategy",
     "NoopStrategy",
     "PromoCodeStrategy",
+    "Reversal",
     "RewardStrategy",
+    "StrategyConflict",
     "StrategyError",
+    "StrategyRefused",
     "get_strategy",
     "strategy_paths",
 ]

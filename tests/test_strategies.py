@@ -14,7 +14,9 @@ from stapel_referrals.strategies import (
     get_strategy,
 )
 
-from .helpers import claim, my_code, rule, signed_up
+from stapel_referrals.services.rewards import grant_due, retry_reversals
+
+from .helpers import claim, my_code, order_cancelled, order_placed, rule, signed_up
 
 
 class Custom(RewardStrategy):
@@ -91,15 +93,130 @@ class TestPayloads:
         assert call["idempotency_key"] == f"referrals:reward:{reward.pk}"
         assert (call["source"], call["type"], call["description"]) == ("grant", "adjustment", "Welcome")
         assert "expires_at" in call and call["metadata"]["role"] == "referee"
+        assert call["identity"] == {"is_anonymous": False, "auth_type": "email"}
         assert (reward.status, reward.unit, reward.grant_ref) == ("granted", "credits", "txn-1")
+        assert providers.wallets[str(referee.pk)] == 50
 
-    def test_billing_refusal_keeps_pending(self, referrer, referee, providers):
-        providers.refuse_credit = "wallet_frozen"
+    def test_no_identity_without_a_signup_fact(self, referrer, referee, providers):
+        rule(trigger="first_order", strategy="billing_credit", beneficiary="referrer", hold_days=0,
+             referrer_params={"credits": 5})
+        claim(referee, my_code(referrer))
+        providers.unmet.add(str(referrer.pk))
+        order_placed(referee)
+        (call,) = providers.calls["billing.credit"]
+        reward = Reward.objects.get()
+        assert "identity" not in call and (reward.status, reward.reason) == ("rejected", "user_unknown")
+
+    def test_identity_lets_billing_meet_a_new_referee(self, referrer, referee, providers):
+        rule(strategy="billing_credit", beneficiary="referee", referee_params={"credits": 3})
+        providers.unmet.add(str(referee.pk))
+        claim(referee, my_code(referrer))
+        signed_up(referee)
+        assert Reward.objects.get().status == "granted" and providers.wallets[str(referee.pk)] == 3
+
+    @pytest.mark.parametrize("reason", ["user_unknown", "user_inactive"])
+    def test_unknown_or_inactive_beneficiary_rejects(self, referrer, referee, providers, reason,
+                                                       captured_events):
+        providers.refuse_credit = reason
         rule(strategy="billing_credit", beneficiary="referee", referee_params={"credits": 1})
         claim(referee, my_code(referrer))
         signed_up(referee)
         reward = Reward.objects.get()
-        assert reward.status == "pending" and "wallet_frozen" in reward.last_error
+        assert (reward.status, reward.reason, reward.last_error) == ("rejected", reason, "")
+        assert [e.event_type for e in captured_events][-1] == "referrals.reward.rejected"
+
+    def test_idempotency_conflict_stays_pending_with_an_error_log(self, referrer, referee, providers,
+                                                                 caplog):
+        rule(strategy="billing_credit", beneficiary="referee", referee_params={"credits": 7}, hold_days=1)
+        claim(referee, my_code(referrer))
+        signed_up(referee)
+        reward_id = Reward.objects.get().pk
+        providers.wallets[str(referee.pk)] = 0
+        providers.keys[(str(referee.pk), f"referrals:reward:{reward_id}")] = ("debit", 3, "txn-x")
+        Reward.objects.update(hold_until=None)
+        with caplog.at_level("ERROR", logger="stapel_referrals.services.rewards"):
+            grant_due()
+        reward = Reward.objects.get()
+        assert reward.status == "pending"
+        assert "idempotency_conflict" in reward.last_error
+        assert any(r.levelname == "ERROR" and str(reward_id) in r.getMessage() for r in caplog.records)
+        assert providers.wallets[str(referee.pk)] == 0
+
+    @pytest.mark.parametrize("reason", ["invalid_expires_at", "something_new", None])
+    def test_other_refusals_retry(self, referrer, referee, providers, reason):
+        providers.refuse_credit = reason or ""
+        rule(strategy="billing_credit", beneficiary="referee", referee_params={"credits": 1})
+        claim(referee, my_code(referrer))
+        if reason is None:
+            providers.fail.add("billing.credit")  # unanswered
+        signed_up(referee)
+        reward = Reward.objects.get()
+        assert reward.status == "pending" and reward.last_error
+
+    def test_lost_credit_answer_is_retried_under_the_same_key(self, referrer, referee, providers):
+        rule(strategy="billing_credit", beneficiary="referee", referee_params={"credits": 9})
+        claim(referee, my_code(referrer))
+        providers.lose_answer.add("billing.credit")
+        signed_up(referee)
+        assert Reward.objects.get().status == "pending"
+        grant_due()
+        assert Reward.objects.get().status == "granted"
+        assert providers.wallets[str(referee.pk)] == 9  # credited once
+
+    def _granted_credit(self, referrer, referee, credits=10):
+        rule(trigger="first_order", strategy="billing_credit", beneficiary="referee", hold_days=0,
+             referee_params={"credits": credits})
+        claim(referee, my_code(referrer))
+        signed_up(referee)
+        order_placed(referee, order_id="o-1")
+        return Reward.objects.get()
+
+    def test_reversal_of_an_unspent_credit(self, referrer, referee, providers):
+        self._granted_credit(referrer, referee)
+        order_cancelled(referee, "o-1")
+        reward = Reward.objects.get()
+        (debit,) = providers.calls["billing.debit"]
+        assert debit["idempotency_key"] == f"referrals:reward:{reward.pk}:reverse"
+        assert "allow_partial" not in debit and debit["credits"] == 10
+        assert (reward.status, reward.reversal_outcome, reward.reversed_value) == (
+            "reversed", "reversed", Decimal("10.00"))
+        assert providers.wallets[str(referee.pk)] == 0
+
+    def test_reversal_of_a_partly_spent_credit_takes_what_is_left(self, referrer, referee, providers,
+                                                                  captured_events):
+        self._granted_credit(referrer, referee)
+        providers.wallets[str(referee.pk)] = 4  # six credits were spent
+        order_cancelled(referee, "o-1")
+        reward = Reward.objects.get()
+        assert [d["credits"] for d in providers.calls["billing.debit"]] == [10, 4]
+        assert len({d["idempotency_key"] for d in providers.calls["billing.debit"]}) == 1
+        assert (reward.status, reward.reversal_outcome, reward.reversed_value) == (
+            "reversed", "reversed_partial", Decimal("4.00"))
+        assert providers.wallets[str(referee.pk)] == 0  # no debt, no negative balance
+        reversed_fact = [e for e in captured_events if e.event_type == "referrals.reward.reversed"][-1]
+        assert reversed_fact.payload["reversal_outcome"] == "reversed_partial"
+        assert reversed_fact.payload["reversed_value"] == "4.00"
+
+    def test_reversal_of_a_spent_credit(self, referrer, referee, providers):
+        self._granted_credit(referrer, referee)
+        providers.wallets[str(referee.pk)] = 0
+        order_cancelled(referee, "o-1")
+        reward = Reward.objects.get()
+        assert [d["credits"] for d in providers.calls["billing.debit"]] == [10]
+        assert (reward.status, reward.reversal_outcome, reward.reversed_value) == (
+            "reversed", "already_spent", Decimal("0.00"))
+
+    def test_lost_reversal_answer_replays_the_planned_amount(self, referrer, referee, providers):
+        self._granted_credit(referrer, referee)
+        providers.wallets[str(referee.pk)] = 4
+        providers.lose_answer.add("billing.debit")
+        order_cancelled(referee, "o-1")
+        assert Reward.objects.get().status == "granted"  # the partial debit happened, its answer did not
+        providers.wallets[str(referee.pk)] += 100  # a top-up before the retry
+        assert retry_reversals() == 1
+        reward = Reward.objects.get()
+        assert [d["credits"] for d in providers.calls["billing.debit"]] == [10, 4, 4]
+        assert reward.reversal_outcome == "reversed_partial" and providers.wallets[str(referee.pk)] == 100
 
     def test_promo_code(self, referrer, referee, providers):
         rule(strategy="promo_code", beneficiary="both",
@@ -123,17 +240,6 @@ class TestPayloads:
         reward = request_reversal(Reward.objects.get().pk, "staff")
         assert reward.status == "reversed"
         assert providers.calls["promotions.codes.revoke"] == []  # nothing to call yet (ask P-RF1)
-
-    def test_promo_reversal_with_a_revoke_seam(self, referrer, referee, providers, settings):
-        from stapel_referrals.services.rewards import request_reversal
-
-        settings.STAPEL_REFERRALS = {"PROMO_REVOKE_FUNCTION": "promotions.codes.revoke"}
-        rule(strategy="promo_code", beneficiary="referrer", referrer_params={"promotion_key": "friend-10"})
-        claim(referee, my_code(referrer))
-        signed_up(referee)
-        request_reversal(Reward.objects.get().pk, "staff")
-        (revoke,) = providers.calls["promotions.codes.revoke"]
-        assert revoke["code"].startswith("GIFT") and revoke["idempotency_key"].endswith(":reverse")
 
     def test_unknown_promotion_keeps_pending(self, referrer, referee, providers):
         rule(strategy="promo_code", beneficiary="referee", referee_params={"promotion_key": "missing"})

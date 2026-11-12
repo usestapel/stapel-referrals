@@ -37,13 +37,14 @@ from ..models import (
     QualifyingOrder,
     Reward,
     RewardRule,
+    ReversalOutcome,
     RewardStatus,
     Role,
     RuleCodeKind,
     Trigger,
     TriggerKind,
 )
-from ..strategies import StrategyError, get_strategy
+from ..strategies import StrategyConflict, StrategyError, StrategyRefused, get_strategy
 from . import ReferralsError, events
 
 logger = logging.getLogger(__name__)
@@ -260,11 +261,20 @@ def grant(reward_id, *, now=None, strict: bool = False) -> Reward:
         return reward
     try:
         ref = get_strategy(reward.strategy).grant(reward)
+    except StrategyRefused as exc:
+        Reward.objects.filter(pk=reward.pk, status=S.PENDING).update(attempts=F("attempts") + 1)
+        logger.info("referrals: reward %s refused by the provider: %s", reward.pk, exc.reason)
+        _reject(reward.pk, exc.reason, now)
+        return Reward.objects.get(pk=reward.pk)
     except (StrategyError, LookupError, KeyError, ValueError) as exc:
         Reward.objects.filter(pk=reward.pk, status=S.PENDING).update(
             attempts=F("attempts") + 1, last_error=str(exc)[:500] or exc.__class__.__name__,
         )
-        logger.warning("referrals: reward %s not granted yet: %s", reward.pk, exc)
+        if isinstance(exc, StrategyConflict):
+            logger.error("referrals: reward %s left pending, the provider reports a conflict: %s",
+                         reward.pk, exc)
+        else:
+            logger.warning("referrals: reward %s not granted yet: %s", reward.pk, exc)
         if strict:
             raise ReferralsError(503, ERR_503_REWARD_PROVIDER_UNAVAILABLE) from exc
         reward.refresh_from_db()
@@ -314,12 +324,16 @@ def _try_reverse(reward_id, *, now, strict: bool = False) -> Reward:
     if reward.reversed_at is not None or reward.reverse_requested_at is None:
         return reward
     try:
-        get_strategy(reward.strategy).reverse(reward)
-    except (StrategyError, LookupError, KeyError, ValueError) as exc:
+        taken = get_strategy(reward.strategy).reverse(reward)
+    except (StrategyError, StrategyRefused, LookupError, KeyError, ValueError) as exc:
         Reward.objects.filter(pk=reward.pk).update(
             attempts=F("attempts") + 1, last_error=str(exc)[:500] or exc.__class__.__name__,
         )
-        logger.warning("referrals: reward %s not reversed yet: %s", reward.pk, exc)
+        if isinstance(exc, StrategyConflict):
+            logger.error("referrals: reward %s reversal blocked, the provider reports a conflict: %s",
+                         reward.pk, exc)
+        else:
+            logger.warning("referrals: reward %s not reversed yet: %s", reward.pk, exc)
         if strict:
             raise ReferralsError(503, ERR_503_REWARD_PROVIDER_UNAVAILABLE) from exc
         reward.refresh_from_db()
@@ -330,6 +344,10 @@ def _try_reverse(reward_id, *, now, strict: bool = False) -> Reward:
             return locked
         locked.reversed_at = now
         locked.last_error = ""
+        if taken is None:
+            locked.reversal_outcome, locked.reversed_value = ReversalOutcome.REVERSED, locked.value
+        else:
+            locked.reversal_outcome, locked.reversed_value = taken.outcome, taken.value
         was_granted = locked.status == S.GRANTED
         if was_granted:
             locked.status = S.REVERSED

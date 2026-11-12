@@ -133,6 +133,11 @@ class StaffRewardResponseSerializer(RewardResponseSerializer):
     last_error = serializers.CharField(max_length=m.ERROR_MAX_LENGTH, allow_blank=True)
     reverse_requested_at = _instant(allow_null=True)
     reversed_at = _instant(allow_null=True)
+    reversal_outcome = serializers.ChoiceField(
+        choices=m.ReversalOutcome.choices, allow_null=True,
+        help_text="Null until reversed: reversed, reversed_partial (the rest was spent) or already_spent.",
+    )
+    reversed_value = _value(allow_null=True, help_text="Value taken back; null until reversed.")
 
 
 class StaffRewardPageSerializer(_PageSerializer):

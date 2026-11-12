@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "referrals.reward.reversed",
-  "description": "A granted reward was taken back (order cancelled within REVERSAL_WINDOW_DAYS, or staff) and the strategy confirmed the reversal. Key = reward id.",
+  "description": "A granted reward was taken back (order cancelled within REVERSAL_WINDOW_DAYS, or staff) and the strategy confirmed the reversal. reversal_outcome says how much came back: reversed (all), reversed_partial (part; the rest was already spent), already_spent (nothing); reversed_value is the value taken back. Spent rewards are not recorded as debt. Key = reward id.",
   "type": "object",
   "properties": {
     "reward_id": {
@@ -59,6 +59,18 @@
     "reason": {
       "type": "string",
       "maxLength": 64
+    },
+    "reversal_outcome": {
+      "type": "string",
+      "enum": [
+        "reversed",
+        "reversed_partial",
+        "already_spent"
+      ]
+    },
+    "reversed_value": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]{2}$"
     }
   },
   "required": [

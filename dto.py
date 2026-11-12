@@ -100,6 +100,8 @@ class StaffRewardDTO(RewardDTO):
     last_error: str = ""
     reverse_requested_at: dt.datetime | None = None
     reversed_at: dt.datetime | None = None
+    reversal_outcome: str | None = None
+    reversed_value: Decimal | None = None
 
 
 @dataclass

@@ -111,6 +111,7 @@ def enum_name_overrides() -> dict:
     from stapel_referrals.models import (
         Beneficiary,
         CodeKind,
+        ReversalOutcome,
         RewardStatus,
         Role,
         RuleCodeKind,
@@ -121,6 +122,7 @@ def enum_name_overrides() -> dict:
     return {
         "CodeKindEnum": CodeKind,
         "RewardStatusEnum": RewardStatus,
+        "ReversalOutcomeEnum": ReversalOutcome,
         "RewardRoleEnum": Role,
         "RewardTriggerEnum": TriggerKind,
         "RuleTriggerEnum": Trigger,

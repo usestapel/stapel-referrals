@@ -106,6 +106,8 @@ class StaffPresenter:
             referrer_id=reward.referrer_id, trigger_id=reward.trigger_id, strategy=reward.strategy,
             attempts=reward.attempts, last_error=reward.last_error,
             reverse_requested_at=reward.reverse_requested_at, reversed_at=reward.reversed_at,
+            reversal_outcome=reward.reversal_outcome or None,
+            reversed_value=reward.reversed_value if reward.reversed_at else None,
         )
 
     def present_rule(self, rule, counts: dict) -> RewardRuleDTO:
