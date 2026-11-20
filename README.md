@@ -30,7 +30,7 @@ pip install stapel-referrals
 | Config axes | 4 |
 | Usage surface | 6 |
 | Extension points | 7 |
-| Error codes | 63 |
+| Error codes | 64 |
 | Documented flows | 3 |
 | Fleet dependencies | [`stapel-auth`](https://github.com/usestapel/stapel-auth) (optional) · [`stapel-billing`](https://github.com/usestapel/stapel-billing) (optional) · [`stapel-core`](https://github.com/usestapel/stapel-core) · [`stapel-notifications`](https://github.com/usestapel/stapel-notifications) (optional) · [`stapel-orders`](https://github.com/usestapel/stapel-orders) (optional) · [`stapel-promotions`](https://github.com/usestapel/stapel-promotions) (optional) |
 

@@ -2,7 +2,7 @@
 
 Referral codes, attribution and rewards. Every member gets one personal code (minted lazily, collision-proof; vanity codes by policy) and a share link; staff issue campaign codes with a window and an attribution cap. A visitor's client stores the code on the first visit and claims it right after sign-up: the account is attributed once (unique constraint, first touch wins), self-referral, old accounts, stale captures and closed or used-up campaign codes are refused, and opt-in guards (same device, duplicate contact, custom) can refuse a claim with a recorded reason. Reward rules fire on facts — sign-up (user.signed_up), the first qualifying order or the Nth order (orders.order.placed) — for the referrer, the referee or both, with caps per referrer per rolling period and budgets counted under a lock on the rule row. The reward ledger is idempotent per (rule, attribution, trigger, role), holds order rewards for a period, rejects them when the order is cancelled during the hold and reverses them after it. Rewards are paid by a strategy that calls the paying brick by comm Function (billing_credit, promo_code) or just records them (noop); the module never imports auth, orders, billing or promotions.
 
-Contract: axes 4 · surface 6 · extension points 7 · operations 17 · error codes 63 · flows 3.
+Contract: axes 4 · surface 6 · extension points 7 · operations 17 · error codes 64 · flows 3.
 Generated from docs/capabilities.json by `stapel-llms-txt` — do not edit; drift-gated by `make contract-check`.
 
 ## Configuration axes — what a product switches on
@@ -80,7 +80,7 @@ Paths are relative to `/referrals/api/v1/`.
 - GET /staff/stats/ — referrals_staff_stats_retrieve
 - GET /staff/strategies/ — referrals_staff_strategies_list
 
-## Error codes (63) — the StapelError envelope
+## Error codes (64) — the StapelError envelope
 Render `t(code, params)`; branch UX on the remediation. Localized text lives in docs/errors.<lang>.md, not here.
 - error.400.bad_request [400] fix_input
 - error.400.captcha_invalid [400] retry
@@ -103,6 +103,7 @@ Render `t(code, params)`; branch UX on the remediation. Localized text lives in 
 - error.400.reward_rule_invalid [400] fix_input {problem}
 - error.400.reward_strategy_unknown [400] fix_input {strategy}
 - error.400.self_referral [400] fix_input
+- error.400.too_many_ids [400] fix_input {requested,limit}
 - error.400.validation_error [400] fix_input
 - error.400.vanity_code_invalid [400] fix_input
 - error.400.verification_failed [400] verify
@@ -140,7 +141,7 @@ Render `t(code, params)`; branch UX on the remediation. Localized text lives in 
 - error.422.unprocessable_entity [422] wait_and_retry
 - error.423.locked [423] wait_and_retry
 - error.423.verification_locked [423] wait_and_retry
-- error.429.rate_limit [429] wait_and_retry {retry_after_minutes}
+- error.429.rate_limit [429] wait_and_retry {retry_after_display,retry_after,retry_after_minutes}
 - error.429.too_many_requests [429] wait_and_retry
 - error.500.internal [500] contact_support
 - error.503.mandate_unavailable [503] retry

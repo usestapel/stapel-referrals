@@ -21,7 +21,7 @@ if sys.version_info[:2] != (3, 12):
 
 REPO = Path(__file__).resolve().parent.parent
 DOCS = REPO / "docs"
-ARTIFACTS = ("schema.json", "flows.json", "errors.json", "capabilities.json", "llms.txt")
+ARTIFACTS = ("schema.v2.json", "schema.json", "flows.json", "errors.json", "capabilities.json", "llms.txt")
 #: Kept identical to the Makefile's LLMS_BUDGET.
 LLMS_TXT_BUDGET = "6000"
 

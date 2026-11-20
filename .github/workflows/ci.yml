@@ -61,7 +61,7 @@ jobs:
       # docs/errors.json).
       - name: The suite declares its own siblings (stapel-sibling-lint)
         run: |
-          pip install "stapel-tools>=0.55.0,<1" --quiet
+          pip install "stapel-tools>=0.84.0,<1" --quiet
           stapel-sibling-lint .
 
       - name: Fleet gates (stapel-verify arsenal, migrations, outbox atomicity)
@@ -70,6 +70,10 @@ jobs:
           stapel-schema-lint . --strict
           stapel-migration-lint . --strict
           python -m stapel_core.lint.emit_check .
+
+      - name: Contract drift (make contract-check, emitted on 3.12)
+        if: matrix.python-version == '3.12'
+        run: make contract-check PYTHON=python
 
       - name: Tests with coverage
         # Strict siblings: a DECLARED sibling that is missing FAILS instead of

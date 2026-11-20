@@ -24,7 +24,7 @@ classifiers = [
     "Typing :: Typed",
 ]
 dependencies = [
-    "stapel-core>=0.95.3,<1.0",
+    "stapel-core>=0.99.3,<1.0",
 ]
 
 [project.urls]
@@ -47,7 +47,7 @@ test = [
     "pytest-django",
     "pytest-cov",
     # contract emission + llms.txt/README generation (tests/test_contract.py)
-    "stapel-tools>=0.79.1,<1",
+    "stapel-tools>=0.84.0,<1",
     # the wire gate validates bodies; core's VALIDATE_SCHEMAS needs it too
     "jsonschema>=4",
 ]
