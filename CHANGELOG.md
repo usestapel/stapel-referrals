@@ -5,14 +5,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Pre-1.0 semver: **minor = breaking**, patch = compatible.
 
 
-## [Unreleased]
+## [0.1.0] - 2026-11-28
 
 - **Contract profile 2:** `docs/schema.v2.json` beside `docs/schema.json`, for
   a native client generator; `tests/test_contract_profile2.py` on stapel-tools
   0.84.0 `contract_gates`; `make contract-check` in CI. Requires
   stapel-core 0.99.3 (errors.json and the generic 404 binding).
-
-## [0.1.0] — unreleased
 
 ### Added
 - `ReferralCode`: one primary personal code per user, minted lazily and
